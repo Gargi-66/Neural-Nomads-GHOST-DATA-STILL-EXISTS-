@@ -1,0 +1,26 @@
+# Dependencies & Virtual Envs
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Node / Web Build
+web/node_modules/
+web/dist/
+web/.vite/
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Secrets & Environment variables
+.env
+.env.*
+!.env.example
