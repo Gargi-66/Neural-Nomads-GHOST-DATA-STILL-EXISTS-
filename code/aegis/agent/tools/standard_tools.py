@@ -19,11 +19,31 @@ def make_standard_tools(
 ) -> list[ToolDefinition]:
     """Builds standard investigation tools wired to Module 1 and Module 2."""
 
-    def handle_check_admissibility(candidate_id: str, case_id: str, evidence_id: str, event_time: Optional[str] = None) -> Dict[str, Any]:
-        """Tool handler for check_admissibility."""
+    def handle_check_admissibility(
+        candidate_id: str,
+        case_id: str,
+        evidence_id: str,
+        audit_at: Optional[str] = None,
+        event_time: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Tool handler for check_admissibility with complete temporal and provenance validation."""
         meta = validator.manifest.get(evidence_id)
         if not meta:
             return {"admissible": False, "reason": f"Evidence '{evidence_id}' does not exist in manifest."}
+
+        # Temporal admissibility check against audit_at cutoff
+        if audit_at:
+            try:
+                dt_audit = datetime.fromisoformat(audit_at.replace("Z", "+00:00"))
+                if meta.captured_at > dt_audit:
+                    return {
+                        "admissible": False,
+                        "evidence_id": evidence_id,
+                        "reason": f"Evidence captured_at ({meta.captured_at.isoformat()}) is strictly after audit cutoff ({dt_audit.isoformat()}).",
+                    }
+            except Exception as ex:
+                return {"admissible": False, "reason": f"Invalid audit_at format: {ex}"}
+
         return {
             "admissible": True,
             "evidence_id": evidence_id,

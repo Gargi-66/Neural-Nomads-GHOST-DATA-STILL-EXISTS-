@@ -22,9 +22,15 @@ class SimulationOutcome(BaseModel):
 class RemediationSimulator:
     """Hermetic simulator executing plans in memory."""
 
-    def __init__(self, active_flow_recreation_targets: Optional[Dict[str, List[str]]] = None) -> None:
+    def __init__(
+        self,
+        active_flow_recreation_targets: Optional[Dict[str, List[str]]] = None,
+        backup_restoration_targets: Optional[Dict[str, List[str]]] = None
+    ) -> None:
         # flow_id -> list of resource_ids it will recreate if ACTIVE
         self.flow_targets = active_flow_recreation_targets or {}
+        # backup_id -> list of resource_ids it will restore if not BLOCKED
+        self.backup_targets = backup_restoration_targets or {}
 
     def simulate(self, plan: RemediationPlan) -> SimulationOutcome:
         """Simulates plan execution on an isolated copy of initial_state."""
@@ -48,6 +54,20 @@ class RemediationSimulator:
                         failure_reason=(
                             f"Simulation Failure at {step.step_id}: Cannot execute '{op}' on '{res_id}' "
                             f"while synchronization flow '{flow_id}' remains ACTIVE."
+                        ),
+                        transitions_recorded=transitions,
+                        final_state=current_state,
+                    )
+
+            # Rule: DELETE_RECORD cannot proceed if an active backup targeting it is not BLOCKED
+            for backup_id, targets in self.backup_targets.items():
+                if res_id in targets and current_state.get(backup_id) != "BLOCKED":
+                    return SimulationOutcome(
+                        success=False,
+                        failed_step_id=step.step_id,
+                        failure_reason=(
+                            f"Simulation Failure at {step.step_id}: Cannot execute '{op}' on '{res_id}' "
+                            f"while backup restore risk '{backup_id}' remains unblocked."
                         ),
                         transitions_recorded=transitions,
                         final_state=current_state,

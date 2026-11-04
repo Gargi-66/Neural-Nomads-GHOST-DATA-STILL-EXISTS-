@@ -155,7 +155,7 @@ def evaluate_resource_policy(
     ...
 ```
 
-### 3.2 Evidence Candidate Validator (`code/aegis/evidence/validator.py`)
+### 3.2 Evidence Candidate Validator (`code/aegis/validation/validator.py`)
 ```python
 def validate_evidence_candidate(
     candidate: EvidenceCandidate,
@@ -168,7 +168,7 @@ def validate_evidence_candidate(
     ...
 ```
 
-### 3.3 Remediation Planner (`code/aegis/planning/planner.py`)
+### 3.3 Remediation Planner (`code/aegis/remediation/planner.py`)
 ```python
 def build_remediation_plan(
     case_id: str,

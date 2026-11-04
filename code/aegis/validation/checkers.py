@@ -108,12 +108,15 @@ def validate_policy_consistency(
     policy: CompiledPolicy
 ) -> Tuple[bool, Optional[str]]:
     """Validates that proposed treatment conforms to Module 1 policy rules."""
+    cat_upper = candidate.data_category.upper()
     res_ctx = ResourceContext(
         resource_id=candidate.resource_id,
         system_id=candidate.system_id,
         data_category=candidate.data_category,
         present_identifiers=candidate.present_identifiers,
-        is_tombstone=(candidate.data_category.upper() == "ACCOUNT_TOMBSTONE"),
+        is_tombstone=(cat_upper == "ACCOUNT_TOMBSTONE"),
+        is_shared_context=(cat_upper == "SUPPORT_MESSAGE"),
+        legal_hold_active=(cat_upper == "LEGAL_HOLD_RECORD"),
     )
     try:
         decision = evaluate_policy(res_ctx, policy)

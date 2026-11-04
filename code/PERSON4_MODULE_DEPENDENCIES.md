@@ -10,24 +10,22 @@ Every sub-module within Person 4 has a strict dependency order:
 
 ```mermaid
 flowchart TD
-    M0["Module 0: Contracts & Models<br/>(contracts.py)"] --> M1["Module 1: Policy Engine<br/>(policy/engine.py)"]
-    M0 --> M2["Module 2: Evidence Validator<br/>(evidence/validator.py)"]
-    M1 --> M3["Module 3: Remediation Planner<br/>(planning/planner.py)"]
+    M0["Module 0: Contracts & Models<br/>(PERSON4_INTERFACES.md)"] --> M1["Module 1: Policy Engine<br/>(aegis/policy/)"]
+    M0 --> M2["Module 2: Evidence Validator<br/>(aegis/validation/)"]
+    M1 --> M3["Module 3: Bounded LLM Agent<br/>(aegis/agent/)"]
     M2 --> M3
-    M0 --> M4["Module 4: LLM Adapter & Tools<br/>(agent/adapter.py)"]
+    M1 --> M4["Module 4: Remediation Planner & Simulator<br/>(aegis/remediation/)"]
     M2 --> M4
-    M3 --> M5["Module 5: Remediation Simulator<br/>(simulation/simulator.py)"]
-    M5 --> M6["Module 6: Adversarial & Triage Suite<br/>(adversarial/suite.py)"]
+    M4 --> M5["Module 5: Adversarial Testing & Evaluation<br/>(aegis/evaluation/)"]
 ```
 
-### Build Sequence:
-1. **Module 0 (Done)**: Authoritative contracts and Pydantic schemas (`StepObject`, `EvidenceCandidate`, `DeletionRule`).
-2. **Module 1**: `policy/engine.py` (Rule compilation and mapping). Zero external dependencies.
-3. **Module 2**: `evidence/validator.py` (Temporal cutoff and manifest validation). Depends only on Module 0.
-4. **Module 3**: `planning/planner.py` (Step ordering and formatting). Depends on Modules 0, 1, 2.
-5. **Module 4**: `agent/adapter.py` (Bounded LLM investigator tools). Depends on Modules 0, 2.
-6. **Module 5**: `simulation/simulator.py` (In-memory state transition tester). Depends on Modules 0, 1, 3.
-7. **Module 6**: `adversarial/suite.py` (Mutation tests & disagreement triage). Depends on Module 5.
+### Authoritative Package Structure:
+1. **Module 0**: Specification & Architecture documents (`code/PERSON4_*.md`).
+2. **Module 1**: `code/aegis/policy/` (Rule compilation, tombstone logic, evaluator, validator).
+3. **Module 2**: `code/aegis/validation/` (Temporal cutoff, evidence manifest, identity consistency, operation triplets).
+4. **Module 3**: `code/aegis/agent/` (Bounded LLM provider, tool registry, safety gate, orchestrator).
+5. **Module 4**: `code/aegis/remediation/` (Requirement extraction, DAG dependency graph, plan generator, in-memory simulator).
+6. **Module 5**: `code/aegis/evaluation/` (Dataset manager, field comparator, error taxonomy, adversarial mutations, disagreement analyzer, regression engine).
 
 ---
 

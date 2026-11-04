@@ -80,6 +80,9 @@ def evaluate_policy(resource: ResourceContext, policy: CompiledPolicy) -> Policy
         elif "still attributable to a user" in cond and resource.is_attributable:
             selected_rule = rule
             break
+        elif "user email address" in cond:
+            selected_rule = rule
+            break
         elif "retention period" in cond and resource.within_retention_period:
             selected_rule = rule
             break
@@ -91,8 +94,15 @@ def evaluate_policy(resource: ResourceContext, policy: CompiledPolicy) -> Policy
             break
 
     if not selected_rule:
-        # Default to first matching category rule if condition criteria were met or unspecified
-        selected_rule = matching_rules[0]
+        # Check if any rule has an "Always" condition
+        always_rules = [r for r in matching_rules if r.condition.lower() == "always"]
+        if always_rules:
+            selected_rule = always_rules[0]
+        else:
+            raise UnresolvedPolicyError(
+                f"Policy evaluation unresolved for category '{category}' on resource '{resource.resource_id}'. "
+                f"None of the {len(matching_rules)} condition criteria were satisfied by the resource context."
+            )
 
     # Identifier prohibition check for REDACT / ANONYMIZE actions
     prohibited_fields: List[str] = []
