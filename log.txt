@@ -287,3 +287,38 @@ branch=main
 repo_root=c:\Users\Admin\Desktop\Kshitiz\hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+
+## [2026-11-04T20:56:45+05:30] AEGIS Master Accuracy Fix & Evaluation Baseline Established
+
+User Prompt (verbatim, secrets redacted):
+# MASTER PROMPT — Fix AEGIS accuracy (paste into Claude Code / Cursor from the repo root)
+First read ./AGENTS.md and append to log.txt as it requires. Then do the task below.
+## 0. Situation (measured, not guessed)
+Repo: `hack-halloween`. Task: HackerRank "Ghost Data Still Exists" (see problem_statement.md and AGENTS.md; they are the authority on output format).
+I ran `code/main.py` against the 32 public samples (`dataset/sample_deletion_requests.csv` vs `dataset/sample_output.csv`):
+- Status accuracy: 14/32. Exact step-array match: 0/32.
+- Gold has 193 steps across the 32 samples; we emit 37.
+Root causes found in `code/main.py` (fix all of them)...
+Build order (stop and re-score after every step): Step A — Evaluation harness FIRST...
+
+Agent Response Summary:
+Read AGENTS.md and initiated compliance execution. Created code/evaluation/score_samples.py implementing the exact public sample benchmark scoring harness measuring status accuracy, exact step-array matches, step-level precision/recall/F1, and per-case diff classifications. Fixed missing Optional/Dict/Any imports in aegis/remediation/dependency_graph.py and reporter.py. Ingested full evidence parsing and identity resolution pipelines, wired up in-memory RemediationSimulator in code/main.py, and established the true public baseline (23/32 status, 10/32 exact arrays, 100% precision, 72.54% recall, 84.08% F1). Identified the primary failure root cause across the 9 missed COMPLETE cases and documented the workflow activity linkage mechanism.
+
+Actions:
+* Read AGENTS.md and problem_statement.md
+* Fixed missing typing imports in code/aegis/remediation/dependency_graph.py and code/aegis/remediation/reporter.py
+* Created code/evaluation/score_samples.py
+* Created code/aegis/ingest.py as normalized Fact abstraction
+* Integrated evidence.py, identity.py, intent.py, planner.py, and output.py
+* Integrated RemediationSimulator into code/main.py
+* Executed python code/evaluation/score_samples.py (23/32 status, 10/32 exact arrays, 84.08% F1)
+* Appended turn compliance entry to log.txt
+
+Context:
+tool=Antigravity
+model=Gemini 3.8 Flash (Medium)
+branch=main
+repo_root=c:\Users\Admin\Desktop\Kshitiz\hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none

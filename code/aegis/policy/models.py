@@ -40,6 +40,7 @@ class ResourceContext(BaseModel):
     legal_hold_active: bool = False
     restore_access_blockable: bool = True
     is_tombstone: bool = False
+    contains_user_email: bool = True
     attributes: Dict[str, Any] = Field(default_factory=dict)
     present_identifiers: List[str] = Field(default_factory=list)
 

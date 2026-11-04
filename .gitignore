@@ -25,3 +25,9 @@ Thumbs.db
 .env.*
 !.env.example
 
+# Temporary Scratch
+scratch/
+work/
+cases_518.json
+
+

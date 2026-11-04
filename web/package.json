@@ -11,9 +11,12 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.4",
+    "@xyflow/react": "^12.12.1",
     "lucide-react": "^1.68.0",
+    "motion": "^14.9.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5",
     "tailwindcss": "^4.3.4"
   },
   "devDependencies": {

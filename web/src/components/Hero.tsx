@@ -1,20 +1,21 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowRight, Play } from 'lucide-react';
+import { motion } from 'motion/react';
 
-interface HeroProps {
-  onStartInvestigation: () => void;
-  onSeeHowItWorks: () => void;
-}
-
-export const Hero: React.FC<HeroProps> = ({ onStartInvestigation, onSeeHowItWorks }) => {
+export const Hero: React.FC = () => {
   return (
     <section id="hero" className="relative pt-12 pb-16 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-6 items-center">
           
           {/* Left Column: Headline & Action */}
-          <div className="lg:col-span-7 flex flex-col items-start space-y-6">
-            
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-7 flex flex-col items-start space-y-6"
+          >
             {/* Pill Tag */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFEAE0] border border-[#FCD2BF] shadow-xs">
               <span className="text-base" role="img" aria-label="ghost">👻</span>
@@ -36,28 +37,33 @@ export const Hero: React.FC<HeroProps> = ({ onStartInvestigation, onSeeHowItWork
 
             {/* CTAs */}
             <div className="flex flex-wrap items-center gap-4 pt-2">
-              <button
-                onClick={onStartInvestigation}
+              <Link
+                to="/product"
                 className="group inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full bg-[#E05822] hover:bg-[#C94715] text-white text-base font-bold shadow-lg shadow-orange-500/25 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0"
               >
                 <span>Start an Investigation</span>
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </button>
+              </Link>
 
-              <button
-                onClick={onSeeHowItWorks}
+              <Link
+                to="/how-it-works"
                 className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-full bg-white hover:bg-[#FFF5EE] text-[#1E232A] border border-[#E7D6C7] text-base font-bold shadow-xs hover:shadow-md transition-all duration-200 transform hover:-translate-y-0.5"
               >
                 <span>See How It Works</span>
                 <div className="w-4 h-4 flex items-center justify-center text-[#E05822]">
                   <Play className="w-3 h-3 fill-current ml-0.5" />
                 </div>
-              </button>
+              </Link>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Right Column: Hero Visual Graphic using exact uploaded illustration */}
-          <div className="lg:col-span-5 relative flex justify-center items-center">
+          {/* Right Column: Hero Visual Graphic */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-5 relative flex justify-center items-center"
+          >
             <div className="relative w-full max-w-[500px] flex items-center justify-center animate-float-slow">
               <img
                 src="/hero-ghost-illustration.jpg"
@@ -65,7 +71,7 @@ export const Hero: React.FC<HeroProps> = ({ onStartInvestigation, onSeeHowItWork
                 className="w-full h-auto object-contain rounded-3xl drop-shadow-md select-none pointer-events-none"
               />
             </div>
-          </div>
+          </motion.div>
 
         </div>
       </div>

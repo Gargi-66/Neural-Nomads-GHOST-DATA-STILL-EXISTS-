@@ -1,11 +1,8 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Terminal, Zap, Database, Share2, Bot, Atom, ArrowRight } from 'lucide-react';
 
-interface BottomSectionProps {
-  onOpenSampleCase: () => void;
-}
-
-export const BottomSection: React.FC<BottomSectionProps> = ({ onOpenSampleCase }) => {
+export const BottomSection: React.FC = () => {
   const stack = [
     { name: 'Python', role: 'Core engine', icon: Terminal },
     { name: 'FastAPI', role: 'API & services', icon: Zap },
@@ -19,10 +16,10 @@ export const BottomSection: React.FC<BottomSectionProps> = ({ onOpenSampleCase }
     <section className="relative pt-6 pb-28 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20">
         
-        {/* Two-column split row: Tech Stack on Left, Live Investigation on Right */}
+        {/* Two-column split row */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
           
-          {/* Left Column: Tech Stack */}
+          {/* Left: Tech Stack */}
           <div className="lg:col-span-6 bg-white/80 rounded-3xl p-6 border border-[#EFE5DB] shadow-xs flex flex-col justify-between">
             <h3 className="text-base font-extrabold text-[#191D24] mb-4">
               Tech Stack
@@ -48,27 +45,25 @@ export const BottomSection: React.FC<BottomSectionProps> = ({ onOpenSampleCase }
             </div>
           </div>
 
-          {/* Right Column: Explore a Live Investigation Card */}
+          {/* Right: Explore a Live Investigation Card */}
           <div className="lg:col-span-6 bg-white rounded-3xl p-6 border border-[#EFE5DB] shadow-xs flex items-center justify-between relative overflow-hidden">
-            
-            {/* Text & Button */}
             <div className="max-w-[280px] sm:max-w-xs z-10">
               <h3 className="text-lg font-black text-[#191D24] mb-1.5">
                 Explore a Live Investigation
               </h3>
               <p className="text-xs text-[#525B69] leading-relaxed mb-4">
-                Walk through a real case, see the evidence, and understand the decision.
+                Walk through 518 ground-truth cases, see the evidence, and inspect deterministic remediation plans.
               </p>
-              <button
-                onClick={onOpenSampleCase}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#E05822] hover:bg-[#C94715] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+              <Link
+                to="/product"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#E05822] hover:bg-[#C94715] text-white text-xs font-bold shadow-md shadow-orange-500/20 transition-all transform hover:-translate-y-0.5"
               >
                 <span>Try a Sample Case</span>
                 <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              </Link>
             </div>
 
-            {/* Ghost with Lantern Graphic on Right */}
+            {/* Ghost with Lantern */}
             <div className="relative flex items-end justify-center shrink-0">
               <div className="relative animate-float-slow">
                 <img
@@ -78,20 +73,16 @@ export const BottomSection: React.FC<BottomSectionProps> = ({ onOpenSampleCase }
                 />
               </div>
             </div>
-
           </div>
 
         </div>
       </div>
 
-      {/* Atmospheric Twilight Landscape at the bottom */}
+      {/* Atmospheric Twilight Landscape */}
       <div className="relative w-full h-48 -mt-8 pointer-events-none select-none">
-        
-        {/* Flying bats */}
         <div className="absolute top-4 left-1/4 text-slate-800 text-xs animate-float">🦇</div>
         <div className="absolute top-10 left-1/3 text-slate-800 text-xs animate-float-slow">🦇</div>
 
-        {/* Haunted Castle on the left */}
         <svg className="absolute bottom-0 left-6 sm:left-12 w-48 sm:w-60 text-[#30233D] fill-current" viewBox="0 0 300 200">
           <path d="M 0 160 Q 80 140 180 170 L 180 200 L 0 200 Z" opacity="0.9" />
           <rect x="40" y="80" width="70" height="80" />
@@ -104,12 +95,10 @@ export const BottomSection: React.FC<BottomSectionProps> = ({ onOpenSampleCase }
           <path d="M 125 170 L 130 110 M 130 140 L 145 125 M 130 130 L 120 115" stroke="#30233D" strokeWidth="2.5" strokeLinecap="round" />
         </svg>
 
-        {/* Rolling ground hill at the very bottom */}
         <svg className="absolute bottom-0 left-0 w-full text-[#241830] fill-current" viewBox="0 0 1200 80" preserveAspectRatio="none">
           <path d="M 0 40 Q 300 10 600 40 T 1200 30 L 1200 80 L 0 80 Z" />
         </svg>
       </div>
-
     </section>
   );
 };

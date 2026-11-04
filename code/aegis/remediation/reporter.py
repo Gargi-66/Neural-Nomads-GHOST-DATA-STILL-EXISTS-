@@ -3,7 +3,7 @@
 Formats the complete plan, dependency DAG, simulation trace, and verification status.
 """
 
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 from aegis.remediation.models import RemediationPlan
 from aegis.remediation.simulator import SimulationOutcome
 

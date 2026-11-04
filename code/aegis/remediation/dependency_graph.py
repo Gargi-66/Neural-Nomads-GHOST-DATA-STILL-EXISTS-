@@ -6,7 +6,7 @@ Builds directed action dependencies:
 - Downstream copies should be deleted/redacted before or alongside source records.
 """
 
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 
 class DependencyCycleError(Exception):
