@@ -17,7 +17,43 @@ export const CaseInvestigationDetail: React.FC<CaseInvestigationDetailProps> = (
   onBack,
   onSelectCase
 }) => {
-  const currentCase = allCases.find((c) => c.case_id === caseId) || allCases[0];
+  const [liveCaseData, setLiveCaseData] = useState<any>(null);
+
+  React.useEffect(() => {
+    if (caseId.startsWith('CASE-LIVE-')) {
+      fetch(`/api/cases/${caseId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.case_id) {
+            setLiveCaseData({
+              case_id: data.case_id,
+              user_id: data.customer_id || 'live_intake',
+              customer_name: data.full_name || 'Live Intake Subject',
+              primary_email: data.email || 'live@example.com',
+              historical_emails: [data.email],
+              historical_phones: [],
+              phone: '',
+              request_text: data.request_text,
+              deletion_status: data.overall_deletion_status,
+              risk_level: data.overall_deletion_status === 'INCOMPLETE' ? 'CRITICAL' : 'COMPLIANT',
+              reported_status: 'PENDING_AUDIT',
+              reported_date: data.request_date,
+              audit_cutoff: data.audit_cutoff,
+              requested_date: data.request_date,
+              steps_count: data.steps?.length || 0,
+              remediation_steps: data.steps || [],
+              audit_logs: [],
+              evidence_records: data.resources || [],
+              is_live: true
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [caseId]);
+
+  const currentCase = liveCaseData || allCases.find((c) => c.case_id === caseId) || allCases[0];
+
 
   // Animated Investigation Experience state
   const [isRunningInvestigation, setIsRunningInvestigation] = useState(false);

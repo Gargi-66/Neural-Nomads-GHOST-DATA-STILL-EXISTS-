@@ -22,6 +22,17 @@ from pydantic import BaseModel, Field
 # Base repository root resolution
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
+# Ensure code directory is accessible for live engine
+import sys
+_CODE_DIR = Path(__file__).resolve().parent.parent
+if str(_CODE_DIR) not in sys.path:
+    sys.path.insert(0, str(_CODE_DIR))
+
+from live.engine import LiveIntakeEngine
+from live.db import get_live_request, list_live_requests
+
+live_engine = LiveIntakeEngine()
+
 
 def resolve_path(candidates: List[Path]) -> Path:
     for p in candidates:
@@ -212,6 +223,103 @@ def get_dashboard_metrics(dataset: str = Query("challenge", description="'challe
 # ==========================================
 # 3. Case Explorer & Search
 # ==========================================
+class LiveIntakeRequest(BaseModel):
+    full_name: str = Field(..., min_length=1, max_length=120)
+    email: str = Field(..., min_length=3, max_length=120)
+    legal_framework: str = Field("GDPR", max_length=50)
+    deletion_scope: str = Field("ALL_PERSONAL_DATA", max_length=100)
+    request_text: str = Field("", max_length=2000)
+    custom_statement: str = Field("", max_length=2000)
+    otp_code: str = Field("849201", min_length=4, max_length=10)
+
+
+# ==========================================
+# 3. Case Explorer, Search & Live Intake
+# ==========================================
+@app.post("/api/intake")
+def submit_live_intake(req: LiveIntakeRequest):
+    """Process a live deletion intake request with OTP validation and DAG planning."""
+    try:
+        result = live_engine.process_intake(
+            full_name=req.full_name,
+            email=req.email,
+            legal_framework=req.legal_framework,
+            deletion_scope=req.deletion_scope,
+            request_text=req.request_text,
+            custom_statement=req.custom_statement,
+            otp_code=req.otp_code,
+        )
+        return result
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Live intake processing error: {str(e)}")
+
+
+@app.get("/api/intake/{ticket_id}")
+def get_intake_ticket(ticket_id: str):
+    """Retrieve receipt and status for a specific live deletion request ticket."""
+    record = get_live_request(ticket_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"Live intake ticket '{ticket_id}' not found.")
+    
+    return {
+        "ticket_id": record["ticket_id"],
+        "full_name": record["full_name"],
+        "email": record["email"],
+        "legal_framework": record["legal_framework"],
+        "deletion_scope": record["deletion_scope"],
+        "status": record["deletion_status"],
+        "verdict_reason": record["verdict_reason"],
+        "customer_id": record["customer_id"],
+        "submitted_at": record["submitted_at"],
+        "audit_at": record["audit_at"],
+        "receipt_hash": record["receipt_hash"],
+        "steps": json.loads(record["steps_json"] or "[]"),
+        "resources": json.loads(record["resources_json"] or "[]"),
+        "source": "live",
+    }
+
+
+@app.get("/api/live/requests")
+def list_live_intake_requests(limit: int = Query(50, ge=1, le=500)):
+    """List recent live deletion requests from data/live_intake.db."""
+    records = list_live_requests(limit=limit)
+    out = []
+    for r in records:
+        out.append({
+            "ticket_id": r["ticket_id"],
+            "full_name": r["full_name"],
+            "email": r["email"],
+            "legal_framework": r["legal_framework"],
+            "deletion_scope": r["deletion_scope"],
+            "status": r["deletion_status"],
+            "submitted_at": r["submitted_at"],
+            "receipt_hash": r["receipt_hash"],
+            "steps_count": len(json.loads(r["steps_json"] or "[]")),
+            "source": "live",
+        })
+    return {"total": len(out), "requests": out}
+
+
+@app.get("/api/live/export.csv")
+def export_live_requests_csv():
+    """Download CSV export of live deletion requests (isolated from benchmark output.csv)."""
+    records = list_live_requests(limit=1000)
+    lines = ["ticket_id,full_name,email,legal_framework,deletion_scope,status,customer_id,submitted_at,receipt_hash,steps_count\n"]
+    for r in records:
+        sc = len(json.loads(r["steps_json"] or "[]"))
+        lines.append(
+            f'"{r["ticket_id"]}","{r["full_name"]}","{r["email"]}","{r["legal_framework"]}","{r["deletion_scope"]}","{r["deletion_status"]}","{r["customer_id"]}","{r["submitted_at"]}","{r["receipt_hash"]}",{sc}\n'
+        )
+    csv_content = "".join(lines)
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=live_deletion_requests.csv"}
+    )
+
+
 @app.get("/api/cases")
 def list_cases(
     dataset: str = Query("challenge", description="'challenge' or 'synthetic'"),
@@ -222,6 +330,7 @@ def list_cases(
 ):
     conn = get_sqlite_conn(get_gold_path(dataset))
     try:
+        # 1. Fetch benchmark cases
         query = "SELECT * FROM customer_deletion_audit WHERE 1=1"
         params = []
         if status:
@@ -232,20 +341,76 @@ def list_cases(
             term = f"%{q}%"
             params.extend([term, term, term])
 
-        total = conn.execute(f"SELECT count(*) FROM ({query})", params).fetchone()[0]
+        total_benchmark = conn.execute(f"SELECT count(*) FROM ({query})", params).fetchone()[0]
         offset = (page - 1) * limit
         query += " ORDER BY case_id LIMIT ? OFFSET ?"
         params.extend([limit, offset])
 
         cursor = conn.execute(query, params)
-        rows = [dict(r) for r in cursor.fetchall()]
+        benchmark_rows = []
+        for r in cursor.fetchall():
+            d = dict(r)
+            d["source"] = "benchmark"
+            benchmark_rows.append(d)
+
+        # 2. Fetch and filter live cases if on page 1 or searching
+        live_cases_formatted = []
+        try:
+            live_records = list_live_requests(limit=100)
+            for lr in live_records:
+                l_status = lr["deletion_status"]
+                if status and l_status != status:
+                    continue
+                if q:
+                    q_lower = q.lower()
+                    haystack = f"{lr['ticket_id']} {lr['customer_id']} {lr['request_text']} {lr['full_name']} {lr['email']}".lower()
+                    if q_lower not in haystack:
+                        continue
+                
+                res_count = len(json.loads(lr.get("resources_json") or "[]"))
+                live_cases_formatted.append({
+                    "case_id": lr["ticket_id"],
+                    "customer_id": lr["customer_id"] or "unresolved",
+                    "request_date": lr["submitted_at"],
+                    "request_status": "PROCESSED",
+                    "audit_cutoff": lr["audit_at"],
+                    "overall_deletion_status": lr["deletion_status"],
+                    "deletion_completion_status": lr["deletion_status"],
+                    "deleted_resource_count": 0,
+                    "anonymized_resource_count": 0,
+                    "archived_resource_count": 0,
+                    "retained_resource_count": 0,
+                    "pending_resource_count": 0,
+                    "unverified_resource_count": 0,
+                    "total_resource_count": res_count,
+                    "completion_percentage": 100.0 if lr["deletion_status"] == "COMPLETE" else 0.0,
+                    "policy_exception_count": 0,
+                    "unresolved_identity_count": 0 if lr["customer_id"] else 1,
+                    "evidence_completeness": "COMPLETE",
+                    "last_verified_at": lr["audit_at"],
+                    "analysis_timestamp": lr["submitted_at"],
+                    "request_text": lr["request_text"],
+                    "evidence_references": lr["receipt_hash"][:16],
+                    "source": "live",
+                    "full_name": lr["full_name"],
+                    "email": lr["email"],
+                    "legal_framework": lr["legal_framework"],
+                    "deletion_scope": lr["deletion_scope"],
+                    "receipt_hash": lr["receipt_hash"],
+                })
+        except Exception:
+            pass
+
+        # Prepend live cases on first page so analysts see incoming live requests immediately
+        combined_rows = (live_cases_formatted + benchmark_rows) if page == 1 else benchmark_rows
+        total_combined = total_benchmark + len(live_cases_formatted)
 
         return {
             "dataset": dataset,
-            "total": total,
+            "total": total_combined,
             "page": page,
             "limit": limit,
-            "cases": rows,
+            "cases": combined_rows,
         }
     finally:
         conn.close()
@@ -253,19 +418,100 @@ def list_cases(
 
 @app.get("/api/cases/{case_id}")
 def get_case_detail(case_id: str, dataset: str = Query("challenge")):
+    # 1. Check live DB first if case_id looks like a live ticket
+    if str(case_id).upper().startswith("CASE-LIVE-"):
+        live_record = get_live_request(case_id)
+        if live_record:
+            res_list = json.loads(live_record.get("resources_json") or "[]")
+            step_list = json.loads(live_record.get("steps_json") or "[]")
+            return {
+                "case_id": live_record["ticket_id"],
+                "customer_id": live_record["customer_id"] or "unresolved",
+                "request_date": live_record["submitted_at"],
+                "request_status": "PROCESSED",
+                "audit_cutoff": live_record["audit_at"],
+                "overall_deletion_status": live_record["deletion_status"],
+                "deletion_completion_status": live_record["deletion_status"],
+                "deleted_resource_count": 0,
+                "anonymized_resource_count": 0,
+                "archived_resource_count": 0,
+                "retained_resource_count": 0,
+                "pending_resource_count": 0,
+                "unverified_resource_count": 0,
+                "total_resource_count": len(res_list),
+                "completion_percentage": 100.0 if live_record["deletion_status"] == "COMPLETE" else 0.0,
+                "policy_exception_count": 0,
+                "unresolved_identity_count": 0 if live_record["customer_id"] else 1,
+                "evidence_completeness": "COMPLETE",
+                "last_verified_at": live_record["audit_at"],
+                "analysis_timestamp": live_record["submitted_at"],
+                "request_text": live_record["request_text"],
+                "evidence_references": live_record["receipt_hash"][:16],
+                "source": "live",
+                "full_name": live_record["full_name"],
+                "email": live_record["email"],
+                "legal_framework": live_record["legal_framework"],
+                "deletion_scope": live_record["deletion_scope"],
+                "receipt_hash": live_record["receipt_hash"],
+                "verdict_reason": live_record["verdict_reason"],
+                "resources": res_list,
+                "steps": step_list,
+            }
+
+    # 2. Check Gold database for benchmark case
     conn = get_sqlite_conn(get_gold_path(dataset))
     try:
         row = conn.execute("SELECT * FROM customer_deletion_audit WHERE case_id = ?", (case_id,)).fetchone()
         if not row:
+            # Also check live DB as fallback
+            live_record = get_live_request(case_id)
+            if live_record:
+                res_list = json.loads(live_record.get("resources_json") or "[]")
+                step_list = json.loads(live_record.get("steps_json") or "[]")
+                return {
+                    "case_id": live_record["ticket_id"],
+                    "customer_id": live_record["customer_id"] or "unresolved",
+                    "request_date": live_record["submitted_at"],
+                    "request_status": "PROCESSED",
+                    "audit_cutoff": live_record["audit_at"],
+                    "overall_deletion_status": live_record["deletion_status"],
+                    "deletion_completion_status": live_record["deletion_status"],
+                    "deleted_resource_count": 0,
+                    "anonymized_resource_count": 0,
+                    "archived_resource_count": 0,
+                    "retained_resource_count": 0,
+                    "pending_resource_count": 0,
+                    "unverified_resource_count": 0,
+                    "total_resource_count": len(res_list),
+                    "completion_percentage": 100.0 if live_record["deletion_status"] == "COMPLETE" else 0.0,
+                    "policy_exception_count": 0,
+                    "unresolved_identity_count": 0 if live_record["customer_id"] else 1,
+                    "evidence_completeness": "COMPLETE",
+                    "last_verified_at": live_record["audit_at"],
+                    "analysis_timestamp": live_record["submitted_at"],
+                    "request_text": live_record["request_text"],
+                    "evidence_references": live_record["receipt_hash"][:16],
+                    "source": "live",
+                    "full_name": live_record["full_name"],
+                    "email": live_record["email"],
+                    "legal_framework": live_record["legal_framework"],
+                    "deletion_scope": live_record["deletion_scope"],
+                    "receipt_hash": live_record["receipt_hash"],
+                    "verdict_reason": live_record["verdict_reason"],
+                    "resources": res_list,
+                    "steps": step_list,
+                }
             raise HTTPException(status_code=404, detail=f"Case {case_id} not found in {dataset} dataset")
         
         case_dict = dict(row)
+        case_dict["source"] = "benchmark"
         # Fetch linked resources
         res_rows = conn.execute("SELECT * FROM resource_audit WHERE case_id = ? ORDER BY resource_id", (case_id,)).fetchall()
         case_dict["resources"] = [dict(r) for r in res_rows]
         return case_dict
     finally:
         conn.close()
+
 
 
 # ==========================================

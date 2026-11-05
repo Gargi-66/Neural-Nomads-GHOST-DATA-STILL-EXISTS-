@@ -48,13 +48,18 @@ class AuditRetriever:
 
     @classmethod
     def normalize_case_ids(cls, text: str) -> set[str]:
-        """R01: Matches CASE001, case_100, case-100, case100."""
+        """R01: Matches CASE001, case_100, case-100, case100, and CASE-LIVE-XXXX."""
         matches = re.findall(r"(?i)\b(?:case[_\-\s]*(\d+))\b", text)
         case_ids = set()
         for num in matches:
             n = int(num)
             case_ids.add(f"case_{n}")
             case_ids.add(f"case_{num.zfill(3)}")
+        # Match live tickets e.g. CASE-LIVE-20261105-0ECB0D
+        live_matches = re.findall(r"(?i)\b(case[_\-]live[_\-][a-z0-9_-]+)\b", text)
+        for lm in live_matches:
+            case_ids.add(lm.upper())
+            case_ids.add(lm.lower())
         return case_ids
 
     @classmethod
@@ -106,8 +111,47 @@ class AuditRetriever:
             
             case_rows = list(gold.execute(case_query + " ORDER BY case_id LIMIT ?", (*params, limit)))
 
-            # If user explicitly searched for specific case ID(s) and none were found in Gold:
-            if case_ids and not case_rows:
+            # 1.5 Check Live Intake database for live requests
+            live_db_path = self.silver_db.parent.parent / "live_intake.db"
+            if not live_db_path.exists():
+                live_db_path = self.gold_db.parent.parent / "data" / "live_intake.db"
+            if live_db_path.exists():
+                try:
+                    lconn = sqlite3.connect(f"file:{live_db_path.resolve()}?mode=ro", uri=True)
+                    lconn.row_factory = sqlite3.Row
+                    lcursor = lconn.cursor()
+                    lquery = "SELECT * FROM live_deletion_requests WHERE 1=1"
+                    lparams = []
+                    if case_ids:
+                        lplaceholders = ",".join("?" for _ in case_ids)
+                        lquery += f" AND (UPPER(ticket_id) IN ({lplaceholders}) OR LOWER(ticket_id) IN ({lplaceholders}))"
+                        lparams.extend([c.upper() for c in case_ids] + [c.lower() for c in case_ids])
+                    elif customer_ids:
+                        lplaceholders = ",".join("?" for _ in customer_ids)
+                        lquery += f" AND LOWER(customer_id) IN ({lplaceholders})"
+                        lparams.extend([c.lower() for c in customer_ids])
+                    
+                    live_rows = list(lcursor.execute(lquery + " LIMIT ?", (*lparams, limit)))
+                    for lrow in live_rows:
+                        chunks.append(RetrievedChunk(json.dumps(dict(lrow), ensure_ascii=False, sort_keys=True), {
+                            "case_id": lrow["ticket_id"],
+                            "customer_id": lrow["customer_id"] or "",
+                            "resource_id": "",
+                            "evidence_id": lrow["receipt_hash"][:16],
+                            "system_id": "",
+                            "resource_type": "LIVE_INTAKE_TICKET",
+                            "policy_id": lrow["legal_framework"],
+                            "source_layer": "live",
+                            "source_file": "data/live_intake.db:live_deletion_requests",
+                            "timestamp": lrow["submitted_at"],
+                            "verification_status": lrow["deletion_status"],
+                        }))
+                    lconn.close()
+                except Exception:
+                    pass
+
+            # If user explicitly searched for specific benchmark case ID(s) and none found in Gold or Live:
+            if case_ids and not case_rows and not chunks:
                 return []
 
             for row in case_rows:

@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT))
 GOLD_DB = ROOT / "gold" / "gold_database.db"
 SILVER_DB = ROOT / "data" / "silver" / "silver_database.db"
 BRONZE_MANIFEST = ROOT / "data" / "bronze" / "evidence_files.csv"
+LIVE_DB = ROOT / "data" / "live_intake.db"
 
 
 def readonly_connection(database: Path) -> sqlite3.Connection:
@@ -68,12 +69,23 @@ def load_synthetic_results() -> pd.DataFrame:
     return pd.read_csv(path)
 
 
+@st.cache_data(ttl="5s", max_entries=20)
+def load_live_requests() -> pd.DataFrame:
+    if not LIVE_DB.exists():
+        return pd.DataFrame()
+    try:
+        with readonly_connection(LIVE_DB) as connection:
+            return pd.read_sql_query("SELECT * FROM live_deletion_requests ORDER BY submitted_at DESC", connection)
+    except Exception:
+        return pd.DataFrame()
+
+
 st.set_page_config(page_title="Synthetic Deletion Audit Warehouse", layout="wide")
 st.title("Synthetic Data Deletion Audit Warehouse")
 
-overview, bronze_tab, silver_tab, gold_tab, results_tab = st.tabs([
+overview, bronze_tab, silver_tab, gold_tab, results_tab, live_tab = st.tabs([
     "Overview", "Bronze analysis", "Silver analysis", "Gold analysis",
-    "Synthetic data analysis",
+    "Synthetic data analysis", "Live intake",
 ])
 
 with overview:
@@ -319,4 +331,72 @@ with results_tab:
         buffer = io.StringIO()
         filtered.to_csv(buffer, index=False)
         st.download_button("Download synthetic results CSV", buffer.getvalue(), "synthetic_results.csv", "text/csv", width="stretch")
+
+with live_tab:
+    st.subheader("Live erasure intake requests (data/live_intake.db)")
+    live_df = load_live_requests()
+
+    if live_df.empty:
+        st.info("No live deletion requests recorded yet in data/live_intake.db. Submit an erasure request using the floating Chatbot or POST /api/intake to see real-time forensic auditing.")
+    else:
+        # Metrics row
+        total_live = len(live_df)
+        incomplete_live = len(live_df[live_df["deletion_status"] == "INCOMPLETE"])
+        complete_live = len(live_df[live_df["deletion_status"] == "COMPLETE"])
+        na_live = len(live_df[live_df["deletion_status"] == "NOT_APPLICABLE"])
+
+        with st.container(horizontal=True):
+            st.metric("Total Live Requests", total_live, border=True)
+            st.metric("Incomplete (Ghost Data Found)", incomplete_live, border=True)
+            st.metric("Complete (Verified Purged)", complete_live, border=True)
+            st.metric("Not Applicable (No Lakehouse Record)", na_live, border=True)
+
+        st.markdown("**Live Deletion Requests Registry**")
+        display_cols = ["ticket_id", "full_name", "email", "legal_framework", "deletion_status", "customer_id", "submitted_at", "receipt_hash"]
+        st.dataframe(live_df[display_cols], hide_index=True, width="stretch")
+
+        # Detail inspector
+        st.markdown("---")
+        st.subheader("Live Request DAG Remediation Inspector")
+        ticket_options = [""] + live_df["ticket_id"].tolist()
+        selected_ticket = st.selectbox("Inspect Live Ticket", ticket_options, key="live_ticket_selector")
+
+        if selected_ticket:
+            ticket_row = live_df[live_df["ticket_id"] == selected_ticket].iloc[0]
+            c1, c2 = st.columns([2, 1])
+            with c1:
+                st.markdown(f"**Ticket ID**: `{selected_ticket}` &bull; **Status**: `{ticket_row['deletion_status']}`")
+                st.markdown(f"**Subject**: {ticket_row['full_name']} (`{ticket_row['email']}`)")
+                st.markdown(f"**Legal Framework**: {ticket_row['legal_framework']} &bull; **Scope**: `{ticket_row['deletion_scope']}`")
+                st.info(f"**Audit Verdict**: {ticket_row['verdict_reason']}")
+            with c2:
+                st.markdown(f"**Cutoff**: `{ticket_row['audit_at']}`")
+                st.markdown(f"**Receipt Hash**:")
+                st.code(ticket_row['receipt_hash'], language="text")
+
+            # Parse and render DAG steps
+            steps_data = []
+            try:
+                parsed_steps = json.loads(ticket_row["steps_json"])
+                if isinstance(parsed_steps, list):
+                    steps_data = parsed_steps
+            except Exception:
+                pass
+
+            if steps_data:
+                st.markdown(f"**Topologically Sorted DAG Steps ({len(steps_data)} steps)**")
+                st.dataframe(pd.DataFrame(steps_data), hide_index=True, width="stretch")
+            else:
+                st.write("No remediation steps required (Clean or No Lakehouse Record).")
+
+        # Export live CSV
+        live_csv_buf = io.StringIO()
+        live_df.to_csv(live_csv_buf, index=False)
+        st.download_button(
+            "Download Live Requests CSV (live_deletion_requests.csv)",
+            live_csv_buf.getvalue(),
+            "live_deletion_requests.csv",
+            "text/csv",
+            width="stretch"
+        )
 

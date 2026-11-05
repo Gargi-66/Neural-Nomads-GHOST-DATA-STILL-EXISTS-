@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
-  Search, ChevronLeft, ChevronRight, ShieldAlert, ShieldCheck, HelpCircle, ArrowRight
+  Search, ChevronLeft, ChevronRight, ShieldAlert, ShieldCheck, HelpCircle, ArrowRight, Sparkles
 } from 'lucide-react';
 import allCases from '../data/all_cases.json';
 
@@ -13,17 +13,70 @@ export const InvestigationExplorer: React.FC<InvestigationExplorerProps> = ({ on
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [riskFilter, setRiskFilter] = useState<string>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
+  const [liveCasesList, setLiveCasesList] = useState<any[]>([]);
   const itemsPerPage = 12;
 
-  // Filtered cases
+  // Listen for live intake creation events and query API
+  useEffect(() => {
+    const fetchLiveCases = async () => {
+      try {
+        const res = await fetch('/api/live/requests');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.requests) {
+            const mapped = data.requests.map((r: any) => ({
+              case_id: r.ticket_id,
+              user_id: r.customer_id || 'live_intake',
+              customer_name: r.full_name,
+              primary_email: r.email,
+              deletion_status: r.status,
+              risk_level: r.status === 'INCOMPLETE' ? 'CRITICAL' : 'COMPLIANT',
+              reported_status: 'PENDING_AUDIT',
+              audit_cutoff: r.submitted_at,
+              source: 'live',
+              is_live: true,
+            }));
+            setLiveCasesList(mapped);
+          }
+        }
+      } catch (_) {}
+    };
+
+    fetchLiveCases();
+
+    const handleNewLiveCase = (e: any) => {
+      if (e.detail) {
+        const d = e.detail;
+        const newCase = {
+          case_id: d.ticket_id,
+          user_id: d.customer_id || 'live_intake',
+          customer_name: d.full_name,
+          primary_email: d.email,
+          deletion_status: d.status,
+          risk_level: d.status === 'INCOMPLETE' ? 'CRITICAL' : 'COMPLIANT',
+          reported_status: 'PENDING_AUDIT',
+          audit_cutoff: d.submitted_at,
+          source: 'live',
+          is_live: true,
+        };
+        setLiveCasesList(prev => [newCase, ...prev.filter(x => x.case_id !== newCase.case_id)]);
+      }
+    };
+
+    window.addEventListener('aegis_live_case_created', handleNewLiveCase);
+    return () => window.removeEventListener('aegis_live_case_created', handleNewLiveCase);
+  }, []);
+
+  // Filtered cases combining live and benchmark
   const filteredCases = useMemo(() => {
-    return allCases.filter((c) => {
+    const combined = [...liveCasesList, ...allCases];
+    return combined.filter((c: any) => {
       // Search matching
       const matchesSearch = 
         c.case_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.user_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.primary_email.toLowerCase().includes(searchTerm.toLowerCase());
+        (c.user_id && c.user_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (c.customer_name && c.customer_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (c.primary_email && c.primary_email.toLowerCase().includes(searchTerm.toLowerCase()));
 
       // Status matching
       const matchesStatus = statusFilter === 'ALL' || c.deletion_status === statusFilter;
@@ -33,7 +86,8 @@ export const InvestigationExplorer: React.FC<InvestigationExplorerProps> = ({ on
 
       return matchesSearch && matchesStatus && matchesRisk;
     });
-  }, [searchTerm, statusFilter, riskFilter]);
+  }, [searchTerm, statusFilter, riskFilter, liveCasesList]);
+
 
   // Pagination
   const totalPages = Math.ceil(filteredCases.length / itemsPerPage) || 1;
@@ -140,6 +194,12 @@ export const InvestigationExplorer: React.FC<InvestigationExplorerProps> = ({ on
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#FAF7F2] text-[#717A88] border border-[#EFE5DB]">
                       {c.user_id}
                     </span>
+                    {(c.is_live || c.source === 'live' || String(c.case_id).startsWith('CASE-LIVE-')) && (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 animate-pulse">
+                        <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
+                        LIVE
+                      </span>
+                    )}
                   </div>
 
                   {isComplete ? (

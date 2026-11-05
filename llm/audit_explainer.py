@@ -1,11 +1,21 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Iterable, Optional
 
 from .config import GeminiConfig
 from .prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
 from rag.retriever import RetrievedChunk
+
+
+def mask_pii(text: str) -> str:
+    """Mask email addresses and phone numbers before dispatching to external LLMs."""
+    # Redact email addresses
+    redacted = re.sub(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", "[REDACTED_EMAIL]", text)
+    # Redact international & standard phone numbers
+    redacted = re.sub(r"\+?[0-9]{1,4}?[-.\s]?\(?[0-9]{1,3}?\)?[-.\s]?[0-9]{3,4}[-.\s]?[0-9]{3,4}", "[REDACTED_PHONE]", redacted)
+    return redacted
 
 
 class GeminiExplanationError(RuntimeError):
@@ -43,13 +53,15 @@ def explain_audit(question: str, chunks: Iterable[RetrievedChunk]) -> str:
     context_parts = []
     for index, chunk in enumerate(chunk_list, start=1):
         context_parts.append(f"Source {index} [{chunk.metadata.get('source_layer', 'unknown')}]: {chunk.metadata}\nRecord: {chunk.text}")
-    context = "\n\n".join(context_parts)
+    raw_context = "\n\n".join(context_parts)
+    sanitized_context = mask_pii(raw_context)
+    sanitized_question = mask_pii(question)
 
     try:
         client = genai.Client(api_key=config.api_key)
         response = client.models.generate_content(
             model=config.model,
-            contents=USER_PROMPT_TEMPLATE.format(question=question, context=context),
+            contents=USER_PROMPT_TEMPLATE.format(question=sanitized_question, context=sanitized_context),
             config={
                 "system_instruction": SYSTEM_PROMPT,
                 "temperature": 0.1,  # Low temperature for strict factual consistency
