@@ -1,0 +1,9 @@
+customer_id,name,phone,email
+CUST001,Aarav Mehta,+910000000001,customer001@example.test
+CUST002,Diya Sharma,+910000000002,customer002@example.test
+CUST003,Kabir Rao,+910000000003,customer003@example.test
+CUST004,Ananya Iyer,+910000000004,customer004@example.test
+CUST005,Rohan Nair,+910000000005,customer005@example.test
+CUST006,Meera Kapoor,+910000000006,customer006@example.test
+CUST007,Ishaan Das,+910000000007,customer007@example.test
+CUST008,Sara Khan,+910000000008,customer008@example.test

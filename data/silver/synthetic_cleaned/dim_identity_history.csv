@@ -1,0 +1,3 @@
+audit_id,customer_id,old_email,new_email,change_date,field_name,old_value,new_value,source_file
+AUD_ID_001,CUST002,old.customer002@example.test,customer002@example.test,2026-09-07T10:00:00Z,email,old.customer002@example.test,customer002@example.test,synthetic_complete_deletion_datasets/dim_identity_history.csv
+AUD_ID_002,CUST005,old.customer005@example.test,customer005@example.test,2026-09-10T10:00:00Z,email,old.customer005@example.test,customer005@example.test,synthetic_complete_deletion_datasets/dim_identity_history.csv

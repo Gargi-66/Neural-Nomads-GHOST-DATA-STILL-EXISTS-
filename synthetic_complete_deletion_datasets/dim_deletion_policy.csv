@@ -1,0 +1,4 @@
+policy_id,resource_type,action_required,retention_period
+POL001,USER_PROFILE,DELETE,0 days
+POL002,TRANSACTION_RECORD,DELETE,0 days
+POL003,SUPPORT_ATTACHMENT,DELETE,0 days

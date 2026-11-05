@@ -1,0 +1,9 @@
+customer_id,name,phone,email,current_updated_at,source_file
+CUST001,Aarav Mehta,+910000000001,customer001@example.test,2026-10-01T00:00:00Z,synthetic_complete_deletion_datasets/dim_customer.csv
+CUST002,Diya Sharma,+910000000002,customer002@example.test,2026-10-01T00:00:00Z,synthetic_complete_deletion_datasets/dim_customer.csv
+CUST003,Kabir Rao,+910000000003,customer003@example.test,2026-10-01T00:00:00Z,synthetic_complete_deletion_datasets/dim_customer.csv
+CUST004,Ananya Iyer,+910000000004,customer004@example.test,2026-10-01T00:00:00Z,synthetic_complete_deletion_datasets/dim_customer.csv
+CUST005,Rohan Nair,+910000000005,customer005@example.test,2026-10-01T00:00:00Z,synthetic_complete_deletion_datasets/dim_customer.csv
+CUST006,Meera Kapoor,+910000000006,customer006@example.test,2026-10-01T00:00:00Z,synthetic_complete_deletion_datasets/dim_customer.csv
+CUST007,Ishaan Das,+910000000007,customer007@example.test,2026-10-01T00:00:00Z,synthetic_complete_deletion_datasets/dim_customer.csv
+CUST008,Sara Khan,+910000000008,customer008@example.test,2026-10-01T00:00:00Z,synthetic_complete_deletion_datasets/dim_customer.csv
