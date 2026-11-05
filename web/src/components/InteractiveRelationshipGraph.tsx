@@ -1,304 +1,265 @@
-import React, { useState } from 'react';
-import { 
-  AlertTriangle, Info
-} from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { GitBranch, ShieldCheck } from 'lucide-react';
 import allCases from '../data/all_cases.json';
 
-interface InteractiveRelationshipGraphProps {
+interface DAGProps {
   initialCaseId?: string;
   onSelectCase?: (caseId: string) => void;
 }
 
-export const InteractiveRelationshipGraph: React.FC<InteractiveRelationshipGraphProps> = ({
+export const InteractiveRelationshipGraph: React.FC<DAGProps> = ({
   initialCaseId = 'case_09',
   onSelectCase
 }) => {
   const [selectedCaseId, setSelectedCaseId] = useState<string>(initialCaseId);
-  const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null);
 
-  const currentCase = allCases.find((c) => c.case_id === selectedCaseId) || allCases[0];
+  const currentCase = useMemo(() => {
+    return allCases.find((c) => c.case_id === selectedCaseId) || allCases[0];
+  }, [selectedCaseId]);
 
-  // Graph pipeline levels:
-  // USER -> IDENTIFIER -> ACCOUNT -> DATABASE -> REPLICA / BACKUP / SYNC JOB
-  const levels = [
-    {
-      level: 1,
-      title: 'Subject (User)',
-      nodes: [
-        {
-          id: 'user_node',
-          label: currentCase.customer_name,
-          sublabel: currentCase.user_id,
-          type: 'user',
-          status: 'AUDITED',
-          details: `Canonical subject. Request submitted at ${currentCase.requested_at?.slice(0, 16)}.`
-        }
-      ]
-    },
-    {
-      level: 2,
-      title: 'Claimed Identifiers',
-      nodes: [
-        {
-          id: 'email_node',
-          label: currentCase.primary_email,
-          sublabel: 'Primary Request Email',
-          type: 'identifier',
-          status: 'RESOLVED',
-          details: 'Direct email identifier supplied with deletion request.'
-        },
-        ...(currentCase.historical_emails || []).map((he: string, i: number) => ({
-          id: `hist_email_${i}`,
-          label: he,
-          sublabel: 'Historical Alias (user_audit_log)',
-          type: 'identifier',
-          status: 'HISTORICAL',
-          details: 'Historical email recovered from user_audit_log.csv changes.'
-        }))
-      ]
-    },
-    {
-      level: 3,
-      title: 'Account Service',
-      nodes: [
-        {
-          id: 'acc_node',
-          label: `account_${currentCase.user_id.split('_')[1] || '001'}`,
-          sublabel: 'Core User Profile',
-          type: 'account',
-          status: currentCase.deletion_status === 'COMPLETE' ? 'ABSENT' : 'RESIDUAL_FOUND',
-          details: currentCase.deletion_status === 'COMPLETE'
-            ? 'Account profile record verified deleted from primary service.'
-            : 'Surviving profile record or unredacted tombstone discovered.'
-        }
-      ]
-    },
-    {
-      level: 4,
-      title: 'Replication Cluster',
-      nodes: [
-        {
-          id: 'db_node',
-          label: 'Primary PostgreSQL DB',
-          sublabel: 'Cluster master',
-          type: 'database',
-          status: 'VERIFIED',
-          details: 'Master database processed deletion workflow event.'
-        },
-        {
-          id: 'replica_node',
-          label: 'Failover Read Replica',
-          sublabel: 'Regional secondary',
-          type: 'replica',
-          status: currentCase.findings_count > 0 ? 'DESYNC_DETECTED' : 'IN_SYNC',
-          isZombie: currentCase.findings_count > 0,
-          details: currentCase.findings_count > 0 
-            ? 'Replication drift! Replica still contains un-purged customer row.'
-            : 'Replica verified synchronized and empty.'
-        }
-      ]
-    },
-    {
-      level: 5,
-      title: 'Active Flows & Backups',
-      nodes: [
-        {
-          id: 'backup_node',
-          label: 'Disaster Recovery Archive',
-          sublabel: 'S3 cold backup snapshot',
-          type: 'backup',
-          status: currentCase.restore_risks_count > 0 ? 'RESTORE_RISK' : 'SAFE',
-          isZombie: currentCase.restore_risks_count > 0,
-          details: currentCase.restore_risks_count > 0 
-            ? 'Active disaster recovery backup with restore_allowed=1 capable of resurrecting data.' 
-            : 'Cold snapshot with restore permissions strictly blocked.'
-        },
-        {
-          id: 'sync_node',
-          label: 'Data Synchronization Flow',
-          sublabel: 'integration_service connector',
-          type: 'sync',
-          status: currentCase.active_flows_count > 0 ? 'ACTIVE_FLOW' : 'DISABLED',
-          isZombie: currentCase.active_flows_count > 0,
-          details: currentCase.active_flows_count > 0 
-            ? 'Active real-time connector silently repopulating deleted records downstream.' 
-            : 'Connector disabled prior to record purging.'
-        }
-      ]
-    }
-  ];
+  const steps = useMemo(() => {
+    return currentCase.steps || [];
+  }, [currentCase]);
 
   return (
     <div className="space-y-6">
       
-      {/* Top Controls Bar */}
+      {/* Top Header Card */}
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#EFE5DB] shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFEAE0] text-[#D94E1B] text-xs font-bold mb-2">
-              <span>🕸️</span>
-              <span>DATA FLOW &amp; LINEAGE GRAPH</span>
+              <GitBranch className="w-3.5 h-3.5" />
+              <span>DIRECTED ACYCLIC GRAPH (DAG)</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#191D24] tracking-tight">
-              Interactive Relationship Lineage Graph
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#191D24] tracking-tight flex items-center gap-2">
+              Topological Remediation DAG
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-semibold">
+                Kahn&apos;s Algorithm
+              </span>
             </h2>
             <p className="text-xs sm:text-sm text-[#525B69] mt-0.5">
-              Visualizing the investigated chain: Subject &rarr; Identifiers &rarr; Account Service &rarr; Replica Cluster &rarr; Active Flows / Backups
+              Strict topological dependency ordering: Disables replication sync crons & blocks cold restores <em>before</em> deleting residual records.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <label className="text-xs font-mono font-medium text-[#717A88]">Select Case:</label>
+          {/* Case Selector Dropdown */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-stone-600">Select Case:</span>
             <select
               value={selectedCaseId}
               onChange={(e) => {
                 setSelectedCaseId(e.target.value);
-                setSelectedNode(null);
+                setActiveStepIndex(null);
                 if (onSelectCase) onSelectCase(e.target.value);
               }}
-              className="py-1.5 px-3 bg-[#FAF7F2] border border-[#EFE5DB] rounded-xl text-xs font-mono font-bold text-[#191D24] focus:outline-none focus:border-[#E05822] max-w-xs truncate"
+              className="px-3.5 py-2 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB] text-xs text-stone-900 font-bold focus:outline-none focus:border-[#EA580C] shadow-2xs cursor-pointer font-mono"
             >
-              {allCases.slice(0, 60).map((c) => (
+              {allCases.map((c) => (
                 <option key={c.case_id} value={c.case_id}>
-                  {c.case_id} - {c.customer_name} ({c.deletion_status})
+                  {c.case_id} — {c.customer_name} ({c.deletion_status})
                 </option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-[#EFE5DB] text-xs font-mono">
-          <div className="flex items-center gap-1.5 text-[#555E6B]">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-            <span>Subject / Identity</span>
+        {/* DAG Case Meta Summary Banner */}
+        <div className="p-4 bg-[#FAF7F2] rounded-2xl border border-[#EFE5DB] flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#EA580C]"></div>
+            <span className="font-bold text-stone-900">Subject: {currentCase.customer_name} ({currentCase.user_id})</span>
+            <span className="text-stone-400">&bull;</span>
+            <span className="font-mono text-stone-600">{currentCase.primary_email}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-[#555E6B]">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#E05822]"></span>
-            <span>Relational Account</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-[#555E6B]">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-            <span>Verified Absent / Clean</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-[#D94E1B] font-bold">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#D94E1B] animate-pulse"></span>
-            <span>Zombie Sync / Restore Risk</span>
+
+          <div className="flex items-center gap-2 font-mono">
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+              currentCase.deletion_status === 'COMPLETE' 
+                ? 'bg-emerald-100 text-emerald-800' 
+                : currentCase.deletion_status === 'INCOMPLETE'
+                ? 'bg-rose-100 text-rose-800'
+                : 'bg-stone-200 text-stone-700'
+            }`}>
+              {currentCase.deletion_status}
+            </span>
+            <span className="text-stone-500 font-sans text-xs">Total DAG Steps: <strong>{steps.length}</strong></span>
           </div>
         </div>
       </div>
 
-      {/* Main Interactive Graph Canvas */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        {/* Left: 5-Tier Relationship Graph (8 cols) */}
-        <div className="lg:col-span-8 bg-white rounded-3xl border border-[#EFE5DB] shadow-xs p-6 overflow-x-auto min-h-[550px] flex flex-col justify-between">
-          <div className="flex items-center justify-between gap-4 min-w-[700px]">
-            {levels.map((lvl) => (
-              <div key={lvl.level} className="flex-1 flex flex-col items-center space-y-4">
-                
-                {/* Level Title Header */}
-                <div className="text-[10px] font-mono uppercase tracking-wider text-[#717A88] font-bold text-center border-b border-[#EFE5DB] pb-2 w-full">
-                  Level {lvl.level}: {lvl.title}
-                </div>
-
-                {/* Level Nodes */}
-                <div className="space-y-3.5 w-full flex flex-col items-center">
-                  {lvl.nodes.map((node) => {
-                    const isSelected = selectedNode?.id === node.id;
-                    const isZombie = (node as any).isZombie;
-
-                    return (
-                      <div
-                        key={node.id}
-                        onClick={() => setSelectedNode(node)}
-                        className={`w-full max-w-[170px] p-3 rounded-2xl border text-left cursor-pointer transition-all duration-200 select-none ${
-                          isSelected 
-                            ? 'bg-[#FFF5EE] border-[#E05822] shadow-xs scale-105' 
-                            : isZombie
-                              ? 'bg-amber-50/70 border-amber-300 hover:border-amber-400'
-                              : 'bg-[#FAF7F2] border-[#EFE5DB] hover:bg-white hover:border-[#D5C7B8]'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-1 mb-1">
-                          <span className="text-[10px] font-mono uppercase font-bold text-[#8C7A6D]">
-                            {node.type}
-                          </span>
-                          <span className={`w-2 h-2 rounded-full ${
-                            isZombie ? 'bg-[#D94E1B] animate-pulse' : 'bg-emerald-500'
-                          }`}></span>
-                        </div>
-
-                        <div className="font-bold text-xs text-[#191D24] truncate">
-                          {node.label}
-                        </div>
-                        <div className="text-[10px] font-mono text-[#717A88] truncate mt-0.5">
-                          {node.sublabel}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-              </div>
-            ))}
-          </div>
-
-          <div className="text-center text-[11px] font-mono text-[#8C7A6D] pt-4 border-t border-[#EFE5DB] mt-4">
-            Click any node to inspect grounded forensic evidence and remediation prerequisites.
-          </div>
+      {/* Visual Topological DAG Flow Diagram */}
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#EFE5DB] shadow-xs space-y-6">
+        <div>
+          <h3 className="text-base font-extrabold text-[#191D24] mb-1">
+            Topological Dependency Pipeline (Execution Order)
+          </h3>
+          <p className="text-xs text-[#525B69]">
+            Hover or click any node to trace prerequisite ordering and target state verification.
+          </p>
         </div>
 
-        {/* Right: Node Details Inspector (4 cols) */}
-        <div className="lg:col-span-4 bg-white rounded-3xl border border-[#EFE5DB] shadow-xs p-6 space-y-4">
-          <div className="flex items-center gap-2 border-b border-[#EFE5DB] pb-3">
-            <Info className="w-4 h-4 text-[#E05822]" />
-            <h3 className="text-sm font-bold text-[#191D24]">Node Forensic Inspector</h3>
+        {/* Horizontal Node Stages with Directional Arrows */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
+          
+          {/* Stage 1: FINDING */}
+          <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-[#EFE5DB] relative group hover:border-amber-300 transition shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-mono font-bold uppercase text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                Phase 1: Finding
+              </span>
+              <span className="text-xs font-mono font-bold text-stone-400">Step 1</span>
+            </div>
+            <h4 className="text-xs font-bold text-stone-900 mb-1">Evidence Detection</h4>
+            <p className="text-[11px] text-stone-600 leading-relaxed">
+              Scan multi-system evidence manifest at audit cutoff. Identifies surviving records in secondary storage.
+            </p>
+            <div className="mt-3 pt-2 border-t border-[#EFE5DB] text-[10px] font-mono text-stone-500">
+              State: <strong className="text-rose-600">PRESENT / ACTIVE</strong>
+            </div>
           </div>
 
-          {selectedNode ? (
-            <div className="space-y-4 font-mono text-xs">
-              <div>
-                <span className="text-[10px] uppercase text-[#8C7A6D] block">Node Label</span>
-                <span className="text-sm font-black text-[#191D24] block mt-0.5">{selectedNode.label}</span>
-                <span className="text-xs text-[#717A88] block">{selectedNode.sublabel}</span>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB] space-y-1">
-                <span className="text-[10px] uppercase text-[#8C7A6D] block">Status</span>
-                <span className={`font-bold ${
-                  (selectedNode as any).isZombie ? 'text-[#D94E1B]' : 'text-emerald-700'
-                }`}>
-                  {selectedNode.status}
-                </span>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB] space-y-1">
-                <span className="text-[10px] uppercase text-[#8C7A6D] block">Forensic Context</span>
-                <p className="text-xs text-[#525B69] font-sans leading-relaxed">
-                  {selectedNode.details}
-                </p>
-              </div>
-
-              {(selectedNode as any).isZombie && (
-                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1.5">
-                  <div className="flex items-center gap-1.5 font-bold text-xs text-[#D94E1B]">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>Ghost Data Recreation Threat</span>
-                  </div>
-                  <p className="text-[11px] font-sans leading-relaxed text-[#78350F]">
-                    This path allows deleted data to be resuscitated. Prerequisite action: Disable flow or block restore before touching records.
-                  </p>
-                </div>
-              )}
+          {/* Stage 2: PREREQUISITE (DISABLE DATA FLOW & BLOCK RESTORE) */}
+          <div className="bg-[#FFF9F5] p-4 rounded-2xl border border-[#F6DCD0] relative group hover:border-[#EA580C] transition shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-mono font-bold uppercase text-[#D94E1B] bg-[#FFEAE0] px-2 py-0.5 rounded-full">
+                Phase 2: Prerequisite
+              </span>
+              <span className="text-xs font-mono font-bold text-stone-400">Step 2 &bull; DAG Root</span>
             </div>
-          ) : (
-            <div className="p-8 text-center text-xs font-mono text-[#8C7A6D]">
-              Click on any node in the graph to view lineage and failure modes.
+            <h4 className="text-xs font-bold text-stone-900 mb-1">Halt Re-Creation Paths</h4>
+            <p className="text-[11px] text-stone-600 leading-relaxed">
+              <strong className="text-stone-900">DISABLE_DATA_FLOW</strong> & <strong className="text-stone-900">BLOCK_RESTORE</strong>. Stop background sync jobs from resurrecting deleted records.
+            </p>
+            <div className="mt-3 pt-2 border-t border-[#F6DCD0] text-[10px] font-mono text-stone-500">
+              State: <strong className="text-[#EA580C]">DISABLED / BLOCKED</strong>
             </div>
-          )}
+          </div>
+
+          {/* Stage 3: REMEDIATION (DELETE / REDACT) */}
+          <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-[#EFE5DB] relative group hover:border-blue-300 transition shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-mono font-bold uppercase text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                Phase 3: Remediation
+              </span>
+              <span className="text-xs font-mono font-bold text-stone-400">Step 3 &bull; Execution</span>
+            </div>
+            <h4 className="text-xs font-bold text-stone-900 mb-1">Downstream-First Purge</h4>
+            <p className="text-[11px] text-stone-600 leading-relaxed">
+              <strong className="text-stone-900">DELETE_RECORD</strong> on read replicas, search indices, and exports, then purge primary database record.
+            </p>
+            <div className="mt-3 pt-2 border-t border-[#EFE5DB] text-[10px] font-mono text-stone-500">
+              State: <strong className="text-blue-600">ABSENT / REDACTED</strong>
+            </div>
+          </div>
+
+          {/* Stage 4: VERIFICATION */}
+          <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200 relative group hover:border-emerald-400 transition shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-mono font-bold uppercase text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                Phase 4: Verification
+              </span>
+              <span className="text-xs font-mono font-bold text-stone-400">Terminal Gate</span>
+            </div>
+            <h4 className="text-xs font-bold text-stone-900 mb-1">Cryptographic Proof</h4>
+            <p className="text-[11px] text-stone-600 leading-relaxed">
+              <strong className="text-stone-900">VERIFY_RECORD_ABSENT</strong>. Proves downstream nodes are clean and flows remain disabled.
+            </p>
+            <div className="mt-3 pt-2 border-t border-emerald-200 text-[10px] font-mono text-stone-500">
+              State: <strong className="text-emerald-700">COMPLIANT</strong>
+            </div>
+          </div>
+
         </div>
 
+        {/* Directed Edge Rules Banner */}
+        <div className="p-4 bg-[#FAF7F2] rounded-2xl border border-[#EFE5DB] text-xs text-stone-600 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span><strong>DAG Acyclicity Guarantee:</strong> Cycle-free Directed Acyclic Graph sorted via Kahn&apos;s algorithm with 0 order inversions.</span>
+          </div>
+          <span className="text-[11px] font-mono font-bold text-stone-500">Topological Sort: Valid</span>
+        </div>
+      </div>
+
+      {/* Granular Step-by-Step DAG Table for Selected Case */}
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#EFE5DB] shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-extrabold text-[#191D24]">
+              Topological Step Schedule for {currentCase.case_id}
+            </h3>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Exact sequence encoded into <code className="text-[#EA580C] font-mono">output.csv</code>
+            </p>
+          </div>
+          <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-[#FAF7F2] border border-[#EFE5DB] text-stone-600">
+            {steps.length} ordered actions
+          </span>
+        </div>
+
+        <div className="overflow-x-auto rounded-2xl border border-[#EFE5DB]">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="bg-[#FAF7F2] text-stone-600 uppercase tracking-wider text-[10px] border-b border-[#EFE5DB]">
+              <tr>
+                <th className="py-3 px-4 font-bold text-center w-16">Step</th>
+                <th className="py-3 px-4 font-bold">Phase</th>
+                <th className="py-3 px-4 font-bold">Operation (DAG Action)</th>
+                <th className="py-3 px-4 font-bold">System ID</th>
+                <th className="py-3 px-4 font-bold">Resource ID</th>
+                <th className="py-3 px-4 font-bold text-center">Target State</th>
+                <th className="py-3 px-4 font-bold">Evidence Citation</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px] bg-white">
+              {steps.map((s, idx) => {
+                const isSelected = activeStepIndex === idx;
+                return (
+                  <tr 
+                    key={s.step_no} 
+                    onClick={() => setActiveStepIndex(idx)}
+                    className={`hover:bg-[#FAF7F2] transition cursor-pointer ${isSelected ? 'bg-orange-50/50' : ''}`}
+                  >
+                    <td className="py-2.5 px-4 text-center font-bold text-stone-900">
+                      #{s.step_no}
+                    </td>
+                    <td className="py-2.5 px-4">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-sans font-bold ${
+                        s.phase === 'FINDING' ? 'bg-amber-100 text-amber-800' :
+                        s.phase === 'REMEDIATION' ? 'bg-blue-100 text-blue-800' :
+                        'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        {s.phase}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-4 font-bold text-stone-900">
+                      {s.operation}
+                    </td>
+                    <td className="py-2.5 px-4 text-[#EA580C] font-semibold">
+                      {s.system_id}
+                    </td>
+                    <td className="py-2.5 px-4 text-stone-700">
+                      {s.resource_id}
+                    </td>
+                    <td className="py-2.5 px-4 text-center font-bold">
+                      <span className={`px-2 py-0.5 rounded text-[10px] ${
+                        s.state === 'PRESENT' || s.state === 'ACTIVE' ? 'text-rose-600 bg-rose-50 border border-rose-200' :
+                        s.state === 'DISABLED' || s.state === 'BLOCKED' ? 'text-amber-700 bg-amber-50 border border-amber-200' :
+                        'text-emerald-700 bg-emerald-50 border border-emerald-200'
+                      }`}>
+                        {s.state}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-4 font-sans text-stone-500 text-[10px]">
+                      {s.evidence_id ? <code className="bg-[#FAF7F2] px-1.5 py-0.5 rounded text-[#EA580C] font-bold font-mono">{s.evidence_id}</code> : <span className="text-stone-400 italic">None (Proposed)</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
     </div>

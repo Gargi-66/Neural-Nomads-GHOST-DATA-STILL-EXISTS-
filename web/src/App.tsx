@@ -115,9 +115,6 @@ export function App() {
             <GhostRadarWidget
               onInspectCase={(cid) => handleNavigate('investigation', cid)}
             />
-            <BottomSection
-              onOpenSampleCase={() => handleOpenSampleCase('case_09')}
-            />
           </div>
         )}
 
@@ -125,9 +122,6 @@ export function App() {
         {currentView === 'how-it-works' && (
           <div className="py-6">
             <HowItWorks />
-            <BottomSection
-              onOpenSampleCase={() => handleOpenSampleCase('case_09')}
-            />
           </div>
         )}
 
@@ -135,9 +129,6 @@ export function App() {
         {currentView === 'architecture' && (
           <div className="py-6">
             <ArchitectureSection />
-            <BottomSection
-              onOpenSampleCase={() => handleOpenSampleCase('case_09')}
-            />
           </div>
         )}
 
@@ -147,9 +138,6 @@ export function App() {
             <UseCasesSection 
               onSelectCase={(cid) => handleNavigate('investigation', cid)}
             />
-            <BottomSection
-              onOpenSampleCase={() => handleOpenSampleCase('case_09')}
-            />
           </div>
         )}
 
@@ -157,9 +145,6 @@ export function App() {
         {currentView === 'research' && (
           <div className="py-6">
             <ResearchSection />
-            <BottomSection
-              onOpenSampleCase={() => handleOpenSampleCase('case_09')}
-            />
           </div>
         )}
 
@@ -167,9 +152,6 @@ export function App() {
         {currentView === 'docs' && (
           <div className="py-6">
             <DocsSection />
-            <BottomSection
-              onOpenSampleCase={() => handleOpenSampleCase('case_09')}
-            />
           </div>
         )}
 

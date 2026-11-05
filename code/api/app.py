@@ -40,6 +40,18 @@ GOLD_DB_PATH = resolve_path([
     REPO_ROOT / "hack-halloween" / "gold" / "gold_database.db",
 ])
 
+SYNTHETIC_GOLD_DB_PATH = resolve_path([
+    REPO_ROOT / "gold" / "synthetic_gold" / "gold_database.db",
+    REPO_ROOT.parent / "gold" / "synthetic_gold" / "gold_database.db",
+    REPO_ROOT / "hack-halloween" / "gold" / "synthetic_gold" / "gold_database.db",
+])
+
+
+def get_gold_path(dataset: str = "challenge") -> Path:
+    if str(dataset).lower() == "synthetic":
+        return SYNTHETIC_GOLD_DB_PATH
+    return GOLD_DB_PATH
+
 OUTPUT_CSV_PATH = resolve_path([
     REPO_ROOT / "output.csv",
     REPO_ROOT / "hack-halloween" / "output.csv",
@@ -137,9 +149,9 @@ def health_check():
 # 2. Executive SOC Dashboard Metrics (A02 & A03)
 # ==========================================
 @app.get("/api/dashboard")
-def get_dashboard_metrics():
+def get_dashboard_metrics(dataset: str = Query("challenge", description="'challenge' or 'synthetic'")):
     """Dynamically compute metrics from live Gold SQLite database."""
-    conn = get_sqlite_conn(GOLD_DB_PATH)
+    conn = get_sqlite_conn(get_gold_path(dataset))
     try:
         # Case metrics
         case_rows = conn.execute(
@@ -167,6 +179,7 @@ def get_dashboard_metrics():
         build_meta = dict(meta_row) if meta_row else {}
 
         return {
+            "dataset": dataset,
             "total_cases": total_cases,
             "case_status_breakdown": {
                 "INCOMPLETE": case_counts.get("INCOMPLETE", 0),
@@ -201,12 +214,13 @@ def get_dashboard_metrics():
 # ==========================================
 @app.get("/api/cases")
 def list_cases(
+    dataset: str = Query("challenge", description="'challenge' or 'synthetic'"),
     status: Optional[str] = Query(None, description="INCOMPLETE | UNVERIFIED | PARTIALLY_COMPLETED | COMPLETE | NOT_APPLICABLE"),
     q: Optional[str] = Query(None, description="Search term across case_id, customer_id, request_text"),
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=518),
 ):
-    conn = get_sqlite_conn(GOLD_DB_PATH)
+    conn = get_sqlite_conn(get_gold_path(dataset))
     try:
         query = "SELECT * FROM customer_deletion_audit WHERE 1=1"
         params = []
@@ -227,6 +241,7 @@ def list_cases(
         rows = [dict(r) for r in cursor.fetchall()]
 
         return {
+            "dataset": dataset,
             "total": total,
             "page": page,
             "limit": limit,
@@ -237,12 +252,12 @@ def list_cases(
 
 
 @app.get("/api/cases/{case_id}")
-def get_case_detail(case_id: str):
-    conn = get_sqlite_conn(GOLD_DB_PATH)
+def get_case_detail(case_id: str, dataset: str = Query("challenge")):
+    conn = get_sqlite_conn(get_gold_path(dataset))
     try:
         row = conn.execute("SELECT * FROM customer_deletion_audit WHERE case_id = ?", (case_id,)).fetchone()
         if not row:
-            raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
+            raise HTTPException(status_code=404, detail=f"Case {case_id} not found in {dataset} dataset")
         
         case_dict = dict(row)
         # Fetch linked resources
@@ -257,8 +272,8 @@ def get_case_detail(case_id: str):
 # 4. A06: Case-Level Resource Breakdown Endpoint
 # ==========================================
 @app.get("/api/medallion/case/{case_id}/resources")
-def get_case_resources(case_id: str):
-    conn = get_sqlite_conn(GOLD_DB_PATH)
+def get_case_resources(case_id: str, dataset: str = Query("challenge")):
+    conn = get_sqlite_conn(get_gold_path(dataset))
     try:
         rows = conn.execute("SELECT * FROM resource_audit WHERE case_id = ? ORDER BY resource_id", (case_id,)).fetchall()
         return {

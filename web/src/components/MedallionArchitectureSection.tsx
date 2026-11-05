@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Database, Layers, Search, Bot, Sparkles, 
   ShieldCheck, RefreshCw, Send
@@ -8,10 +8,88 @@ import allCases from '../data/all_cases.json';
 import warehouseData from '../data/gold_warehouse_data.json';
 import { SAMPLE_CASES } from '../data/cases';
 
+const SILVER_TABLE_TOTALS: Record<string, number> = {
+  dim_customer: 850,
+  fact_deletion_request: 518,
+  dim_identity_history: 306,
+  fact_resource: 2046,
+  fact_activity: 4011,
+  fact_evidence: 94,
+  dim_deletion_policy: 15,
+  fact_case_data_link: 1216
+};
+
+const GOLD_TABLE_TOTALS: Record<string, number> = {
+  customer_deletion_audit: 518,
+  resource_audit: 1211,
+  system_deletion_summary: 18,
+  warehouse_build_metadata: 1
+};
+
+const getRawTableRows = (source: 'silver' | 'gold', table: string): any[] => {
+  const tableData = source === 'silver' ? (sampleData.silver as any)?.[table] : (sampleData.gold as any)?.[table];
+  if (!tableData) return [];
+  if (Array.isArray(tableData)) return tableData;
+  if (Array.isArray(tableData.sample)) return tableData.sample;
+  if (Array.isArray(tableData.rows)) return tableData.rows;
+  return [];
+};
+
 export const MedallionArchitectureSection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'diagram' | 'silver' | 'gold' | 'rag'>('diagram');
   const [selectedSilverTable, setSelectedSilverTable] = useState<string>('dim_customer');
   const [selectedGoldTable, setSelectedGoldTable] = useState<string>('customer_deletion_audit');
+  
+  // Live backend rows
+  const [liveSilverRows, setLiveSilverRows] = useState<any[] | null>(null);
+  const [liveGoldRows, setLiveGoldRows] = useState<any[] | null>(null);
+
+  // Fetch live Silver table data
+  useEffect(() => {
+    let mounted = true;
+    fetch(`http://localhost:8000/api/medallion/silver/${selectedSilverTable}?limit=25`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (mounted && data && Array.isArray(data.rows) && data.rows.length > 0) {
+          setLiveSilverRows(data.rows);
+        } else if (mounted) {
+          setLiveSilverRows(null);
+        }
+      })
+      .catch(() => { if (mounted) setLiveSilverRows(null); });
+    return () => { mounted = false; };
+  }, [selectedSilverTable]);
+
+  // Fetch live Gold table data
+  useEffect(() => {
+    let mounted = true;
+    const endpoint = selectedGoldTable === 'customer_deletion_audit'
+      ? 'http://localhost:8000/api/medallion/gold/cases?limit=25'
+      : 'http://localhost:8000/api/medallion/gold/resources?limit=25';
+
+    fetch(endpoint)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (mounted && data && Array.isArray(data.rows) && data.rows.length > 0) {
+          setLiveGoldRows(data.rows);
+        } else if (mounted) {
+          setLiveGoldRows(null);
+        }
+      })
+      .catch(() => { if (mounted) setLiveGoldRows(null); });
+    return () => { mounted = false; };
+  }, [selectedGoldTable]);
+
+  // Active rows with seamless fallback
+  const activeSilverRows = useMemo(() => {
+    if (liveSilverRows && liveSilverRows.length > 0) return liveSilverRows;
+    return getRawTableRows('silver', selectedSilverTable);
+  }, [liveSilverRows, selectedSilverTable]);
+
+  const activeGoldRows = useMemo(() => {
+    if (liveGoldRows && liveGoldRows.length > 0) return liveGoldRows;
+    return getRawTableRows('gold', selectedGoldTable);
+  }, [liveGoldRows, selectedGoldTable]);
   
   // RAG query state
   const [ragQuery, setRagQuery] = useState('account_005');
@@ -408,35 +486,41 @@ export const MedallionArchitectureSection: React.FC = () => {
           </div>
 
           {/* Table Stats */}
-          <div className="flex items-center justify-between text-xs font-mono text-stone-600 bg-stone-50 px-3 py-2 rounded-xl">
+          <div className="flex items-center justify-between text-xs font-mono text-stone-600 bg-stone-50 px-3 py-2 rounded-xl border border-stone-200">
             <span>Table: <strong className="text-stone-900">{selectedSilverTable}</strong></span>
-            <span>Total Records: <strong className="text-stone-900">{(sampleData.silver as any)[selectedSilverTable]?.total?.toLocaleString()}</strong></span>
+            <span>Total Records in Lakehouse: <strong className="text-blue-700 font-bold">{(SILVER_TABLE_TOTALS[selectedSilverTable] || activeSilverRows.length).toLocaleString()} rows</strong></span>
           </div>
 
           {/* Table Data View */}
           <div className="overflow-x-auto rounded-xl border border-stone-200 max-h-[420px]">
-            <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-stone-100 text-stone-700 sticky top-0 border-b border-stone-200">
-                <tr>
-                  {Object.keys((sampleData.silver as any)[selectedSilverTable]?.sample?.[0] || {}).map((col) => (
-                    <th key={col} className="px-3 py-2 font-semibold truncate max-w-[200px]">
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {((sampleData.silver as any)[selectedSilverTable]?.sample || []).map((row: any, idx: number) => (
-                  <tr key={idx} className="hover:bg-blue-50/40 transition-colors">
-                    {Object.values(row).map((val: any, cidx: number) => (
-                      <td key={cidx} className="px-3 py-2 truncate max-w-[220px] text-stone-800">
-                        {val === null ? <span className="text-stone-400 italic">null</span> : String(val)}
-                      </td>
+            {activeSilverRows.length > 0 ? (
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-stone-100 text-stone-700 sticky top-0 border-b border-stone-200">
+                  <tr>
+                    {Object.keys(activeSilverRows[0] || {}).map((col) => (
+                      <th key={col} className="px-3 py-2.5 font-bold truncate max-w-[200px] text-stone-800">
+                        {col}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-stone-100 bg-white">
+                  {activeSilverRows.map((row: any, idx: number) => (
+                    <tr key={idx} className="hover:bg-blue-50/40 transition-colors">
+                      {Object.values(row).map((val: any, cidx: number) => (
+                        <td key={cidx} className="px-3 py-2 truncate max-w-[220px] text-stone-800">
+                          {val === null ? <span className="text-stone-400 italic">null</span> : String(val)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="p-8 text-center text-xs text-stone-500 font-mono">
+                Connecting to Silver Lakehouse (<code className="text-blue-600 font-bold">data/silver/silver_database.db</code>)...
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -475,33 +559,39 @@ export const MedallionArchitectureSection: React.FC = () => {
           {/* Table Stats */}
           <div className="flex items-center justify-between text-xs font-mono text-stone-600 bg-amber-50/50 px-3 py-2 rounded-xl border border-amber-200/50">
             <span>Entity: <strong className="text-stone-900">{selectedGoldTable}</strong></span>
-            <span>Total Records: <strong className="text-stone-900">{(sampleData.gold as any)[selectedGoldTable]?.total?.toLocaleString()}</strong></span>
+            <span>Total Records in Warehouse: <strong className="text-amber-700 font-bold">{(GOLD_TABLE_TOTALS[selectedGoldTable] || activeGoldRows.length).toLocaleString()} rows</strong></span>
           </div>
 
           {/* Table Data View */}
           <div className="overflow-x-auto rounded-xl border border-stone-200 max-h-[420px]">
-            <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-stone-100 text-stone-700 sticky top-0 border-b border-stone-200">
-                <tr>
-                  {Object.keys((sampleData.gold as any)[selectedGoldTable]?.sample?.[0] || {}).map((col) => (
-                    <th key={col} className="px-3 py-2 font-semibold truncate max-w-[220px]">
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {((sampleData.gold as any)[selectedGoldTable]?.sample || []).map((row: any, idx: number) => (
-                  <tr key={idx} className="hover:bg-amber-50/40 transition-colors">
-                    {Object.values(row).map((val: any, cidx: number) => (
-                      <td key={cidx} className="px-3 py-2 truncate max-w-[240px] text-stone-800">
-                        {val === null ? <span className="text-stone-400 italic">null</span> : String(val)}
-                      </td>
+            {activeGoldRows.length > 0 ? (
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-stone-100 text-stone-700 sticky top-0 border-b border-stone-200">
+                  <tr>
+                    {Object.keys(activeGoldRows[0] || {}).map((col) => (
+                      <th key={col} className="px-3 py-2.5 font-bold truncate max-w-[220px] text-stone-800">
+                        {col}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-stone-100 bg-white">
+                  {activeGoldRows.map((row: any, idx: number) => (
+                    <tr key={idx} className="hover:bg-amber-50/40 transition-colors">
+                      {Object.values(row).map((val: any, cidx: number) => (
+                        <td key={cidx} className="px-3 py-2 truncate max-w-[240px] text-stone-800">
+                          {val === null ? <span className="text-stone-400 italic">null</span> : String(val)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="p-8 text-center text-xs text-stone-500 font-mono">
+                Loading Gold Warehouse records from <code className="text-amber-600 font-bold">gold/gold_database.db</code>...
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, Sparkles, Radar, Search, Network, BarChart3, type LucideIcon } from 'lucide-react';
+import { Download, Sparkles, Radar, Search, GitBranch, BarChart3, type LucideIcon } from 'lucide-react';
 
 interface NavbarProps {
   currentView: string;
@@ -32,7 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const toolNavItems: NavItem[] = [
     { id: 'radar', label: 'Radar', icon: Radar },
     { id: 'explorer', label: 'Cases (518)', icon: Search },
-    { id: 'lineage', label: 'Graph', icon: Network },
+    { id: 'lineage', label: 'DAG', icon: GitBranch },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   ];
 
