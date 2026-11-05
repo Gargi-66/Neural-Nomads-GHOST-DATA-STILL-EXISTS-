@@ -89,3 +89,4 @@ To ensure **zero hallucination** and **100% deterministic reproducibility**, we 
 
 > **Key Architectural Takeaway:**  
 > The LLM is **never allowed to guess or hallucinate step operations**. All step operations, states, and resource IDs are constrained to the official policy vocabulary (`REPORT_REMAINING_RECORD`, `DISABLE_DATA_FLOW`, `DELETE_RECORD`, etc.). The LLM serves as an intelligent forensic investigator and explainer, backed by mathematical and relational rigor.
+

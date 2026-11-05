@@ -128,3 +128,4 @@ Stored in `gold/gold_database.db`:
 - **Deterministic Validity:** 100% deterministic (no hallucinated resources or steps).
 - **Temporal Consistency:** 0 cutoff leakage across all 518 evaluation cases.
 - **Schema Compliance:** 518/518 cases match HackerRank output format (`case_id,deletion_status,steps_json`).
+

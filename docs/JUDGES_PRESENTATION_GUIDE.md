@@ -63,3 +63,4 @@
 | **"How did you handle users who changed their email address?"** | *"We parse `user_audit_log.csv` and cross-reference historical aliases with `user_identities.csv`. Even if the deletion request only cites the old email, our engine discovers all past aliases, hashes, and stable user IDs."* |
 | **"What prevents the LLM from hallucinating records?"** | *"We enforce a strict separation of concerns: the LLM is only used for multilingual intent classification and natural language explanation. All evidence indexing, policy rule matching, and DAG topological sorting are 100% deterministic Python and SQLite code."* |
 | **"What is an Account Tombstone?"** | *"Under GDPR and accounting compliance, transaction history must be retained. We preserve the stable `user_id` as a tombstone while redacting prohibited direct PII (name, email, phone)."* |
+
