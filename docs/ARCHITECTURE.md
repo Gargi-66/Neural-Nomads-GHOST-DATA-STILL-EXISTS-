@@ -67,7 +67,7 @@ flowchart TD
 
 The system organizes unstructured and heterogeneous evidence through a **Medallion Architecture (Bronze → Silver → Gold)**:
 
-![Medallion Architecture](/architecture/medallion-architecture.jpg)
+![Medallion Architecture](./medallion-architecture.jpg)
 
 ### Layer Breakdown
 

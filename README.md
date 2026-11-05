@@ -23,6 +23,8 @@ When a company claims account deletion is **Complete**, personal data frequently
 
 ### United Customer Data Model (Medallion Lakehouse)
 
+![Medallion Architecture](docs/medallion-architecture.jpg)
+
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        MEDALLION ARCHITECTURE                          │
