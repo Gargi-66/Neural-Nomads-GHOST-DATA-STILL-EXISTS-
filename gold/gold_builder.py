@@ -42,6 +42,13 @@ def read_only_connection(path: Path | str) -> sqlite3.Connection:
     return connection
 
 
+def read_gold(gold_dir: Path | str = DEFAULT_GOLD_DIR) -> sqlite3.Connection:
+    """Return a read-only sqlite3 connection to gold_database.db."""
+    gold_path = Path(gold_dir)
+    db_path = gold_path / "gold_database.db"
+    return read_only_connection(db_path)
+
+
 def table_columns(connection: sqlite3.Connection, table: str) -> list[str]:
     return [row[1] for row in connection.execute(f'PRAGMA table_info("{table}")')]
 

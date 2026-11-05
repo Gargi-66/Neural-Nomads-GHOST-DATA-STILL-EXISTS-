@@ -20,15 +20,15 @@
 ### Act I: The Incident & Problem (1 Minute)
 > *"Good morning judges. In modern enterprise architecture, clicking 'Delete Account' is often an illusion. Secondary read replicas lag behind, nightly sync crons resurrect deleted rows, and unrotated logs silently store customer PII.*  
 >  
-> *This is the \$2.4M crisis faced by Northstar Shop: a customer whose deletion was marked 'Complete' came back as a digital ghost when they tried to sign up again weeks later. To permanently solve this, we built **AEGIS 3.0**: an AI-powered forensic deletion-audit system that cross-references multi-modal evidence across 94 physical files, enforces strict temporal cutoffs, and generates deterministic, safe remediation plans."*
+> *To illustrate this regulatory danger, consider our benchmark simulation scenario of Northstar Shop: a customer whose deletion was marked 'Complete' came back as a digital ghost when they tried to sign up again weeks later. To permanently solve this, we built **AEGIS 3.1**: an AI-powered forensic deletion-audit system that cross-references multi-modal evidence across 94 physical files, enforces strict temporal cutoffs, scopes resources with relational links (`fact_case_data_link`), and generates deterministic, safe remediation plans."*
 
 ### Act II: Live Web Console Demo (Port 6969) (1.5 Minutes)
 *(Show `http://localhost:6969/`)*
 
 1. **The Hero Dashboard**:
-   > *"Here is the AEGIS SOC Console. Notice our 3 headline audit metrics: 518 evaluation cases processed, 323 incomplete cases flagged where systems falsely claimed completion, and zero temporal cutoff leakage."*
+   > *"Here is the AEGIS SOC Console. Notice our headline audit metrics: 518 evaluation cases processed, 323 incomplete cases flagged where systems falsely claimed completion, and zero temporal cutoff leakage."*
 2. **Spectral Ectoplasm Scanner (Radar)**:
-   > *"Below the hero is our real-time radar scanner. It constantly pings distributed storage targets. Notice Target #1: `failover_replica_db.sql`. The primary database claimed the record was purged, but our engine caught a 320ms replication lag where the user record survived in the failover cluster."*
+   > *"Below the hero is our radar scanner demonstrating distributed storage inspection. In our synthetic demonstration scenario, notice Target #1: `failover_replica_db.sql`. While the primary database claimed the record was purged, our engine caught replication lag where the user record survived in the failover cluster."*
 3. **Simulate Exorcism**:
    > *(Click "Simulate Exorcism" or "Sample Case" button)*  
    > *"Let's simulate remediation on `case_09`. Notice our live audit logs: first, our engine discovers historical email aliases. Then, our NetworkX topological planner discovers active sync flows. We do NOT delete records first—we disable data flows first, block backup restores second, and only then purge the records."*

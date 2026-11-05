@@ -1,11 +1,12 @@
-# AEGIS 3.0 System Architecture & Data Model
+# AEGIS 3.1 System Architecture & Data Model
 ### *HackerRank Orchestrate (October 2026) — Ghost Data Still Exists*
 
 ---
 
 ## 1. High-Level System Architecture
 
-AEGIS 3.0 is a deterministic, evidence-grounded forensic deletion audit system designed to investigate distributed data persistence across secondary replicas, cold backups, unrotated logs, and active synchronization flows.
+**AEGIS 3.1 — Forensic Analytics Accuracy & Evidence-Grounded Intelligence**  
+AEGIS 3.1 is a deterministic, evidence-grounded forensic deletion audit system designed to investigate distributed data persistence across secondary replicas, cold backups, unrotated logs, and active synchronization flows. Resources are scoped per case using verified relational links (`fact_case_data_link`), and evidence admissibility is strictly bounded by temporal cutoffs.
 
 ```mermaid
 flowchart TD

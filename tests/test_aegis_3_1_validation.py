@@ -44,7 +44,9 @@ class MockRow(dict):
 
 def test_g01_case_resource_scoping():
     """Verify that resources are scoped via fact_case_data_link rather than broad customer mapping."""
-    db_path = REPO_ROOT / "hack-halloween" / "gold" / "gold_database.db"
+    db_path = REPO_ROOT / "gold" / "gold_database.db"
+    if not db_path.exists():
+        db_path = REPO_ROOT.parent / "gold" / "gold_database.db"
     assert db_path.exists(), "gold_database.db must exist"
     
     conn = sqlite3.connect(str(db_path))
@@ -130,10 +132,19 @@ def test_r01_rag_multiformat_id_normalization():
     assert "user_98" in AuditRetriever.normalize_customer_ids("Investigate CUST098 please")
 
 
+def get_test_dbs():
+    gold = REPO_ROOT / "gold" / "gold_database.db"
+    silver = REPO_ROOT / "data" / "silver" / "silver_database.db"
+    if not gold.exists():
+        gold = REPO_ROOT.parent / "gold" / "gold_database.db"
+    if not silver.exists():
+        silver = REPO_ROOT.parent / "data" / "silver" / "silver_database.db"
+    return gold, silver
+
+
 def test_r09_rag_cross_customer_isolation():
     """Verify that querying a specific case never retrieves records from other cases/customers."""
-    gold_path = REPO_ROOT / "hack-halloween" / "gold" / "gold_database.db"
-    silver_path = REPO_ROOT / "hack-halloween" / "data" / "silver" / "silver_database.db"
+    gold_path, silver_path = get_test_dbs()
     retriever = AuditRetriever(gold_path, silver_path)
     
     chunks = retriever.retrieve("Audit analysis for CASE100", limit=10)
@@ -146,8 +157,7 @@ def test_r09_rag_cross_customer_isolation():
 
 def test_r10_rag_non_existent_case_returns_no_evidence():
     """Verify that querying non-existent CASE9999 returns 0 chunks and structured no-evidence."""
-    gold_path = REPO_ROOT / "hack-halloween" / "gold" / "gold_database.db"
-    silver_path = REPO_ROOT / "hack-halloween" / "data" / "silver" / "silver_database.db"
+    gold_path, silver_path = get_test_dbs()
     retriever = AuditRetriever(gold_path, silver_path)
     
     chunks = retriever.retrieve("Why is CASE9999 complete?")
