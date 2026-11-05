@@ -1,30 +1,69 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Database, FileText, HardDrive, UploadCloud, 
   Paperclip, Search, Bot, ShieldCheck, 
-  ArrowRight, BarChart2, TrendingUp, Archive, User, GitBranch, FlaskConical, CheckCircle2
+  ArrowRight, BarChart2, TrendingUp, Archive, User, GitBranch, FlaskConical, CheckCircle2,
+  Layers
 } from 'lucide-react';
+import { MedallionArchitectureSection } from './MedallionArchitectureSection';
 
 export const ArchitectureSection: React.FC = () => {
+  const [viewMode, setViewMode] = useState<'medallion' | 'pipeline'>('medallion');
+
   return (
-    <section id="architecture" className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="architecture" className="py-6 sm:py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-6 h-6 rounded-md bg-[#FFF0E7] text-[#E05822] flex items-center justify-center">
-            <ShieldCheck className="w-4 h-4" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-5 h-5 rounded-md bg-[#FFF0E7] text-[#E05822] flex items-center justify-center">
+              <ShieldCheck className="w-3.5 h-3.5" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-[#191D24] tracking-tight">
+              Enterprise System Architecture
+            </h2>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#191D24] tracking-tight">
-            System Architecture
-          </h2>
+          <p className="text-xs sm:text-sm text-[#5B6575]">
+            Medallion Data Architecture (Bronze &rarr; Silver &rarr; Gold) coupled with deterministic DAG planning and grounded RAG.
+          </p>
         </div>
-        <p className="text-sm text-[#5B6575]">
-          A hybrid, agentic architecture that combines deterministic analysis, graph reasoning and LLM-powered investigation.
-        </p>
+
+        {/* View Mode Switcher */}
+        <div className="inline-flex items-center p-1 rounded-full bg-stone-100 border border-stone-200 text-xs">
+          <button
+            onClick={() => setViewMode('medallion')}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-semibold transition-all cursor-pointer ${
+              viewMode === 'medallion'
+                ? 'bg-white text-stone-900 shadow-2xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Layers className="w-3 h-3 text-[#EA580C]" />
+            <span>Medallion Warehouse</span>
+          </button>
+
+          <button
+            onClick={() => setViewMode('pipeline')}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-semibold transition-all cursor-pointer ${
+              viewMode === 'pipeline'
+                ? 'bg-white text-stone-900 shadow-2xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <GitBranch className="w-3 h-3 text-blue-500" />
+            <span>Pipeline Flow</span>
+          </button>
+        </div>
       </div>
 
-      {/* Main Architecture Diagram Container */}
-      <div className="bg-white/60 rounded-3xl p-6 sm:p-8 border border-[#EFE5DB] shadow-xs">
+      {/* Render Medallion Architecture (Default) */}
+      {viewMode === 'medallion' && (
+        <MedallionArchitectureSection />
+      )}
+
+      {/* Render Original Pipeline Flow */}
+      {viewMode === 'pipeline' && (
+      <div className="bg-white/60 rounded-2xl p-4 sm:p-6 border border-[#EFE5DB] shadow-xs">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
           
           {/* Column 1: Data Sources (Evidence) */}
@@ -149,6 +188,7 @@ export const ArchitectureSection: React.FC = () => {
 
         </div>
       </div>
+      )}
     </section>
   );
 };

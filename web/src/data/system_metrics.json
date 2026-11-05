@@ -1,0 +1,19 @@
+{
+  "total_cases": 518,
+  "status_counts": {
+    "COMPLETE": 157,
+    "INCOMPLETE": 173,
+    "NOT_APPLICABLE": 188
+  },
+  "risk_counts": {
+    "NONE": 188,
+    "MEDIUM": 173,
+    "COMPLIANT": 157
+  },
+  "total_evidence_files": 94,
+  "total_findings": 0,
+  "total_active_flows": 0,
+  "total_restore_risks": 0,
+  "total_exposed_pii": 0,
+  "system_surviving_counts": {}
+}

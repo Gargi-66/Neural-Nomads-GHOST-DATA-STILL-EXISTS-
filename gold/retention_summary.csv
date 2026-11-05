@@ -1,0 +1,4 @@
+policy_action,verified_state,policy_reason,resource_count
+RETAIN,UNVERIFIED,A supplied legal hold is active,7
+RETAIN,UNVERIFIED,Record is within the supplied retention period,398
+RETAIN,UNVERIFIED,Restore access can be blocked,59
