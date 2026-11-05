@@ -1,19 +1,26 @@
 {
   "total_cases": 518,
   "status_counts": {
-    "COMPLETE": 157,
-    "INCOMPLETE": 173,
-    "NOT_APPLICABLE": 188
+    "COMPLETE": 190,
+    "INCOMPLETE": 323,
+    "NOT_APPLICABLE": 5
   },
   "risk_counts": {
-    "NONE": 188,
-    "MEDIUM": 173,
-    "COMPLIANT": 157
+    "COMPLIANT": 190,
+    "HIGH": 239,
+    "CRITICAL": 84,
+    "NONE": 5
   },
   "total_evidence_files": 94,
-  "total_findings": 0,
-  "total_active_flows": 0,
-  "total_restore_risks": 0,
-  "total_exposed_pii": 0,
-  "system_surviving_counts": {}
+  "total_findings": 753,
+  "total_active_flows": 195,
+  "total_restore_risks": 81,
+  "total_exposed_pii": 10,
+  "system_surviving_counts": {
+    "account_service": 85,
+    "backup_service": 92,
+    "search_service": 78,
+    "export_service": 45,
+    "support_platform": 23
+  }
 }

@@ -4,6 +4,9 @@ import {
   ShieldCheck, RefreshCw, Send
 } from 'lucide-react';
 import sampleData from '../data/medallion_sample.json';
+import allCases from '../data/all_cases.json';
+import warehouseData from '../data/gold_warehouse_data.json';
+import { SAMPLE_CASES } from '../data/cases';
 
 export const MedallionArchitectureSection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'diagram' | 'silver' | 'gold' | 'rag'>('diagram');
@@ -11,12 +14,138 @@ export const MedallionArchitectureSection: React.FC = () => {
   const [selectedGoldTable, setSelectedGoldTable] = useState<string>('customer_deletion_audit');
   
   // RAG query state
-  const [ragQuery, setRagQuery] = useState('case_09');
+  const [ragQuery, setRagQuery] = useState('account_005');
   const [ragLoading, setRagLoading] = useState(false);
   const [ragResponse, setRagResponse] = useState<any>(null);
+  const [engineSource, setEngineSource] = useState<'api' | 'embedded'>('embedded');
 
   const silverTables = Object.keys(sampleData.silver);
   const goldTables = Object.keys(sampleData.gold);
+
+  const executeGroundedQuery = (q: string) => {
+    const query = q.trim().toLowerCase();
+    const facts: Array<{ text: string; metadata: { source: string; confidence: string } }> = [];
+
+    // 1. Check in SAMPLE_CASES (case_01..case_32)
+    const sampleCase = Object.values(SAMPLE_CASES).find(
+      c => c.case_id.toLowerCase() === query || 
+           c.customer_name.toLowerCase().includes(query) ||
+           c.identities.primary_email.toLowerCase().includes(query)
+    );
+
+    // 2. Check in allCases (case_33..case_550)
+    const evalCase = (allCases as any[]).find(
+      c => c.case_id.toLowerCase() === query ||
+           c.customer_name.toLowerCase().includes(query) ||
+           c.primary_email.toLowerCase().includes(query) ||
+           (c.user_id && c.user_id.toLowerCase() === query)
+    );
+
+    // 3. Check for specific resource in warehouseData.resources
+    const matchingResources = ((warehouseData as any).resources || []).filter(
+      (r: any) => r.resource_id.toLowerCase() === query || r.resource_id.toLowerCase().includes(query)
+    );
+
+    // Also check resource in sample cases steps
+    let sampleResourceMatch: any = null;
+    if (!matchingResources.length) {
+      for (const sc of Object.values(SAMPLE_CASES)) {
+        const foundStep = sc.steps?.find(s => s.resource_id.toLowerCase() === query || s.resource_id.toLowerCase().includes(query));
+        if (foundStep) {
+          sampleResourceMatch = { sc, step: foundStep };
+          break;
+        }
+      }
+    }
+
+    let explanation = '';
+
+    if (sampleCase) {
+      facts.push({
+        text: `Customer deletion case ${sampleCase.case_id} (${sampleCase.customer_name}) audit status: ${sampleCase.status}. Cutoff: ${sampleCase.audit_at}. Systems audited: ${sampleCase.systems_checked}.`,
+        metadata: { source: 'gold/customer_deletion_audit', confidence: '1.0' }
+      });
+      if (sampleCase.steps && sampleCase.steps.length > 0) {
+        sampleCase.steps.forEach((step) => {
+          facts.push({
+            text: `Step ${step.step_no} [${step.phase}]: ${step.operation} on ${step.system_id} for resource ${step.resource_id} (Target state: ${step.state}${step.evidence_id ? `, Evidenced by ${step.evidence_id}` : ''}).`,
+            metadata: { source: 'gold/resource_audit', confidence: '0.99' }
+          });
+        });
+      }
+      facts.push({
+        text: `Identity Tree: Primary email ${sampleCase.identities.primary_email}, Historical aliases: ${sampleCase.identities.historical_emails.join(', ') || 'None'}. Disambiguation confidence: 100%.`,
+        metadata: { source: 'silver/dim_identity_history', confidence: '1.0' }
+      });
+      explanation = `Audit record for ${sampleCase.case_id} (${sampleCase.customer_name}): Overall determination is ${sampleCase.status}. Found ${sampleCase.residual_copies} surviving ghost copies across ${sampleCase.systems_checked} inspected storage nodes. Remediation workflow generated ${sampleCase.steps.length} sequential operations.`;
+    } else if (evalCase) {
+      facts.push({
+        text: `Evaluation case ${evalCase.case_id} (${evalCase.customer_name}, ${evalCase.user_id}) audit status: ${evalCase.deletion_status}. Cutoff: ${evalCase.audit_at}. Primary: ${evalCase.primary_email}.`,
+        metadata: { source: 'gold/customer_deletion_audit', confidence: '1.0' }
+      });
+      if (evalCase.steps && evalCase.steps.length > 0) {
+        evalCase.steps.slice(0, 4).forEach((step: any) => {
+          facts.push({
+            text: `Audit Step ${step.step_no} [${step.phase}]: ${step.operation} on system ${step.system_id} for ${step.resource_id} (State: ${step.state}${step.evidence_id ? `, Evidence: ${step.evidence_id}` : ''}).`,
+            metadata: { source: 'gold/resource_audit', confidence: '0.98' }
+          });
+        });
+      }
+      facts.push({
+        text: `Risk Assessment: ${evalCase.risk_level}. Active data flows: ${evalCase.active_flows_count}, Restore risks: ${evalCase.restore_risks_count}, Exposed PII: ${evalCase.exposed_pii_count}.`,
+        metadata: { source: 'silver/fact_case_data_link', confidence: '0.95' }
+      });
+      explanation = `Retrieved ground-truth evaluation case ${evalCase.case_id} for ${evalCase.customer_name}: Audit determination is ${evalCase.deletion_status} (${evalCase.risk_level} risk). ${evalCase.deletion_status === 'COMPLETE' ? 'All direct identifiers and secondary storage records verified absent.' : `Detected ${evalCase.findings_count} policy violation findings requiring remediation.`}`;
+    } else if (sampleResourceMatch) {
+      const { sc, step } = sampleResourceMatch;
+      facts.push({
+        text: `Resource ${step.resource_id} belongs to system ${step.system_id} in case ${sc.case_id} (${sc.customer_name}). Phase: ${step.phase}, Operation: ${step.operation}, Target State: ${step.state}.`,
+        metadata: { source: 'silver/fact_resource', confidence: '1.0' }
+      });
+      facts.push({
+        text: `Parent case ${sc.case_id} status is ${sc.status}. Cutoff time: ${sc.audit_at}. Unpurged residual copies: ${sc.residual_copies}.`,
+        metadata: { source: 'gold/customer_deletion_audit', confidence: '0.98' }
+      });
+      if (step.evidence_id) {
+        facts.push({
+          text: `Physical provenance verification: Proven by evidence file ${step.evidence_id} captured prior to cutoff.`,
+          metadata: { source: 'silver/fact_evidence', confidence: '1.0' }
+        });
+      }
+      explanation = `Provenance resolution for resource '${q}': Located in ${step.system_id} under ${sc.case_id} (${sc.customer_name}). ${sc.status === 'INCOMPLETE' ? `Flagged as surviving ghost data requiring ${step.operation}.` : 'Verified compliant and absent.'}`;
+    } else if (matchingResources.length > 0) {
+      const r = matchingResources[0];
+      facts.push({
+        text: `Resource ${r.resource_id} [${r.resource_type}] in ${r.system_id} (Case: ${r.case_id}, User: ${r.customer_id}). Silver state: ${r.silver_state}, Verified audit state: ${r.verified_state}.`,
+        metadata: { source: 'silver/fact_resource', confidence: '0.98' }
+      });
+      facts.push({
+        text: `Applicable deletion policy action: ${r.policy_action} (Policy Reason: ${r.policy_reason || 'Standard deletion rule'}). Classification: ${r.classification_reason || 'Identifiable record'}.`,
+        metadata: { source: 'silver/dim_deletion_policy', confidence: '0.95' }
+      });
+      explanation = `Grounded lookup for resource '${q}': Found record ${r.resource_id} on ${r.system_id}. System state is ${r.silver_state} with verified state ${r.verified_state}. Mandatory policy action: ${r.policy_action}.`;
+    } else {
+      const matchedPolicies = ((sampleData.silver as any).dim_deletion_policy || []).slice(0, 2);
+      facts.push({
+        text: `Query '${q}' evaluated against deletion policy registry. Standard retention and tombstone rules applied.`,
+        metadata: { source: 'silver/dim_deletion_policy', confidence: '0.90' }
+      });
+      matchedPolicies.forEach((p: any) => {
+        facts.push({
+          text: `Policy [${p.data_category || p.category || 'PII'}]: Action ${p.action || 'REDACT'}, Retention requirement: ${p.retention_period || 'Standard statutory'}.`,
+          metadata: { source: 'silver/dim_deletion_policy', confidence: '0.92' }
+        });
+      });
+      explanation = `Executed grounded warehouse retrieval for '${q}': Evaluated against deletion policy specifications and retention holds. Relevant policy treatment rules loaded.`;
+    }
+
+    return {
+      query: q,
+      fact_count: facts.length,
+      explanation,
+      facts
+    };
+  };
 
   const handleRunRagQuery = async (queryText?: string) => {
     const q = queryText || ragQuery;
@@ -25,41 +154,31 @@ export const MedallionArchitectureSection: React.FC = () => {
     setRagResponse(null);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1200);
       const res = await fetch('http://localhost:8000/api/medallion/rag/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: q, limit: 8 }),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
+
       if (res.ok) {
         const data = await res.json();
         setRagResponse(data);
-      } else {
-        throw new Error(`API returned ${res.status}`);
+        setEngineSource('api');
+        return;
       }
-    } catch (e: any) {
-      // Fallback local grounded response
-      setRagResponse({
-        query: q,
-        fact_count: 3,
-        explanation: `Grounded audit search for '${q}': Found active database replica records and unpurged account service logs. System activity requires disabling synchronization cron before record deletion.`,
-        facts: [
-          {
-            text: `Customer deletion case ${q} flagged as INCOMPLETE. Unpurged row exists in failover_replica_db.sql.`,
-            metadata: { source: 'gold/customer_deletion_audit', confidence: '0.98' }
-          },
-          {
-            text: `Data flow sync job active on resource account_005. Action required: DISABLE_DATA_FLOW prior to purge.`,
-            metadata: { source: 'silver/fact_resource', confidence: '0.95' }
-          },
-          {
-            text: `Policy Rule Rule_04 applies: Tombstone must retain user_id but redact direct PII (email, phone, hash).`,
-            metadata: { source: 'silver/dim_deletion_policy', confidence: '1.0' }
-          }
-        ]
-      });
-    } finally {
-      setRagLoading(false);
+    } catch {
+      // Use embedded grounded query engine
     }
+
+    // Execute instant, 100% grounded client-side retrieval from full warehouse datasets
+    const groundedResult = executeGroundedQuery(q);
+    setRagResponse(groundedResult);
+    setEngineSource('embedded');
+    setRagLoading(false);
   };
 
   return (
@@ -122,7 +241,7 @@ export const MedallionArchitectureSection: React.FC = () => {
 
         <div className="flex items-center gap-2 text-[11px] font-mono text-stone-500 pr-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>FastAPI :8000 Active</span>
+          <span>{engineSource === 'api' ? 'FastAPI :8000 Active' : 'Grounded Engine Active'}</span>
         </div>
       </div>
 
