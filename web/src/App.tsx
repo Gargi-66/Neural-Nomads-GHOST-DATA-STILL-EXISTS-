@@ -17,6 +17,7 @@ import { EvidenceExplorer } from './components/EvidenceExplorer';
 import { InteractiveRelationshipGraph } from './components/InteractiveRelationshipGraph';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { InvestigationModal } from './components/InvestigationModal';
+import { DeletionRequestChatbot } from './components/DeletionRequestChatbot';
 import { SpookyScrollBackground } from './components/SpookyScrollBackground';
 import allCases from './data/all_cases.json';
 
@@ -230,6 +231,9 @@ export function App() {
           </div>
         </div>
       </footer>
+
+      {/* 6. Floating Deletion Intake Chatbot Widget */}
+      <DeletionRequestChatbot />
 
     </div>
   );
