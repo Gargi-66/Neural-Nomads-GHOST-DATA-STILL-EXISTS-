@@ -2,12 +2,12 @@ import React, { useState, useMemo } from 'react';
 import { 
   ShieldCheck, FileSpreadsheet, Users, GitMerge, Layers, Paperclip,
   CheckCircle2, AlertTriangle, Slash, HelpCircle, SlidersHorizontal, 
-  Download, Search, Database, Sparkles, Eye, ImageIcon, 
-  BarChart2, Maximize2, Camera, ZoomIn, ZoomOut, Move, RotateCcw
+  Download, Search, Database, ExternalLink, Sparkles,
+  Camera, ZoomIn, ZoomOut, Move, RotateCcw, ArrowRight, Activity
 } from 'lucide-react';
 import challengeWarehouseData from '../data/gold_warehouse_data.json';
-import syntheticWarehouseData from '../data/synthetic_gold_warehouse_data.json';
-import analyticsScreenshot from '../assets/enterprise_deletion_analytics.jpg';
+import silverWarehouseData from '../data/silver_warehouse_data.json';
+import evidenceManifest from '../data/evidence_manifest.json';
 
 interface GoldCase {
   case_id: string;
@@ -62,32 +62,49 @@ interface SystemSummary {
   unverified_count: number;
 }
 
+interface EvidenceFile {
+  file_id: string;
+  file_path: string;
+  format?: string;
+  origin: string;
+  captured_at: string;
+  size_bytes?: number;
+}
+
 export const AnalyticsDashboard: React.FC = () => {
-  // Dataset selection: Official Challenge Dataset (518 Cases) vs Synthetic Complete Benchmark (8 Cases - 100% Complete)
-  const [activeDataset, setActiveDataset] = useState<'challenge' | 'synthetic'>('challenge');
+  // Top-level Streamlit Dashboard Page Selector
+  const [streamlitPage, setStreamlitPage] = useState<'forensic' | 'overview' | 'bronze' | 'silver' | 'gold' | 'live'>('forensic');
 
-  // View Mode: Interactive Live Dashboard vs Original Audit Snapshot (Image)
-  const [dashboardMode, setDashboardMode] = useState<'interactive' | 'snapshot'>('interactive');
-  const [showImageModal, setShowImageModal] = useState(false);
-
-  // Active secondary tab below the dashboard
+  // Secondary sub-tab for Forensic Audit Analytics
   const [activeTab, setActiveTab] = useState<'cases' | 'systems' | 'resources'>('cases');
-  
+
+  // Secondary sub-tab for Silver analysis
+  const [silverTable, setSilverTable] = useState<'requests' | 'customers' | 'identity_history' | 'policies' | 'activities' | 'links'>('requests');
+
+  // Secondary sub-tab for Gold analysis
+  const [goldView, setGoldView] = useState<'cases' | 'resources'>('cases');
+
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [systemFilter, setSystemFilter] = useState<string>('ALL');
-  const [resourceStateFilter, setResourceStateFilter] = useState<string>('ALL');
   const [selectedCase, setSelectedCase] = useState<GoldCase | null>(null);
 
-  const warehouseData = activeDataset === 'synthetic' ? syntheticWarehouseData : challengeWarehouseData;
+  // Bronze filter
+  const [bronzeSearch, setBronzeSearch] = useState('');
+  const [bronzeFormatFilter, setBronzeFormatFilter] = useState('ALL');
 
-  const rawCases: GoldCase[] = warehouseData.cases as GoldCase[];
-  const rawResources: GoldResource[] = warehouseData.resources as GoldResource[];
-  const systems: SystemSummary[] = (warehouseData.systems || []) as SystemSummary[];
-  const metadata = warehouseData.metadata || {};
+  // Gold search filters
+  const [goldSearchCase, setGoldSearchCase] = useState('');
+  const [goldSearchUser, setGoldSearchUser] = useState('');
+  const [goldSearchResource, setGoldSearchResource] = useState('');
+  const [goldSearchStatus, setGoldSearchStatus] = useState('ALL');
 
-  // Grounded Metrics for Challenge Dataset (matching Enterprise Deletion Analytics Dashboard)
+  const rawCases: GoldCase[] = challengeWarehouseData.cases as GoldCase[];
+  const rawResources: GoldResource[] = challengeWarehouseData.resources as GoldResource[];
+  const systems: SystemSummary[] = (challengeWarehouseData.systems || []) as SystemSummary[];
+  const evidenceList: EvidenceFile[] = evidenceManifest as EvidenceFile[];
+
+  // Grounded Metrics for Challenge Dataset
   const challengeMetrics = {
     requests: 518,
     users: 850,
@@ -101,7 +118,6 @@ export const AnalyticsDashboard: React.FC = () => {
       unverified: 0
     },
     avgSteps: '4.2',
-    // Distribution of cases by remediation-plan length (0 to 14)
     stepDistribution: [
       { step: 0, count: 151 },
       { step: 1, count: 1 },
@@ -121,40 +137,7 @@ export const AnalyticsDashboard: React.FC = () => {
     ]
   };
 
-  // Grounded Metrics for Synthetic Benchmark Dataset (8 Complete Cases)
-  const syntheticMetrics = {
-    requests: 8,
-    users: 8,
-    identityChanges: 0,
-    systemActivities: 24,
-    evidenceFiles: 24,
-    statusBreakdown: {
-      incomplete: 0,
-      complete: 8,
-      notApplicable: 0,
-      unverified: 0
-    },
-    avgSteps: '1.0',
-    stepDistribution: [
-      { step: 0, count: 0 },
-      { step: 1, count: 8 },
-      { step: 2, count: 0 },
-      { step: 3, count: 0 },
-      { step: 4, count: 0 },
-      { step: 5, count: 0 },
-      { step: 6, count: 0 },
-      { step: 7, count: 0 },
-      { step: 8, count: 0 },
-      { step: 9, count: 0 },
-      { step: 10, count: 0 },
-      { step: 11, count: 0 },
-      { step: 12, count: 0 },
-      { step: 13, count: 0 },
-      { step: 14, count: 0 }
-    ]
-  };
-
-  const currentMetrics = activeDataset === 'synthetic' ? syntheticMetrics : challengeMetrics;
+  const currentMetrics = challengeMetrics;
 
   // Case resources lookup map for fast drill-down
   const resourcesByCase = useMemo(() => {
@@ -187,12 +170,51 @@ export const AnalyticsDashboard: React.FC = () => {
         r.resource_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.resource_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.classification_reason.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesSystem = systemFilter === 'ALL' || r.system_id === systemFilter;
-      const matchesState = resourceStateFilter === 'ALL' || r.verified_state === resourceStateFilter;
-      return matchesSearch && matchesSystem && matchesState;
+      return matchesSearch;
     });
-  }, [rawResources, searchQuery, systemFilter, resourceStateFilter]);
+  }, [rawResources, searchQuery]);
+
+  // Bronze filtered list
+  const filteredBronze = useMemo(() => {
+    return evidenceList.filter(e => {
+      const matchesSearch = 
+        e.file_id.toLowerCase().includes(bronzeSearch.toLowerCase()) ||
+        e.origin.toLowerCase().includes(bronzeSearch.toLowerCase()) ||
+        e.file_path.toLowerCase().includes(bronzeSearch.toLowerCase());
+      const matchesFormat = bronzeFormatFilter === 'ALL' || e.format === bronzeFormatFilter;
+      return matchesSearch && matchesFormat;
+    });
+  }, [evidenceList, bronzeSearch, bronzeFormatFilter]);
+
+  // Bronze format counts
+  const bronzeFormatCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    evidenceList.forEach(e => {
+      const fmt = e.format || 'UNKNOWN';
+      counts[fmt] = (counts[fmt] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [evidenceList]);
+
+  // Gold filtered cases & resources
+  const filteredGoldCases = useMemo(() => {
+    return rawCases.filter(c => {
+      const matchesCase = !goldSearchCase || c.case_id.toLowerCase().includes(goldSearchCase.toLowerCase());
+      const matchesUser = !goldSearchUser || c.customer_id.toLowerCase().includes(goldSearchUser.toLowerCase());
+      const matchesStatus = goldSearchStatus === 'ALL' || c.overall_deletion_status === goldSearchStatus;
+      return matchesCase && matchesUser && matchesStatus;
+    });
+  }, [rawCases, goldSearchCase, goldSearchUser, goldSearchStatus]);
+
+  const filteredGoldResources = useMemo(() => {
+    return rawResources.filter(r => {
+      const matchesCase = !goldSearchCase || r.case_id.toLowerCase().includes(goldSearchCase.toLowerCase());
+      const matchesUser = !goldSearchUser || r.customer_id.toLowerCase().includes(goldSearchUser.toLowerCase());
+      const matchesRes = !goldSearchResource || r.resource_id.toLowerCase().includes(goldSearchResource.toLowerCase());
+      const matchesStatus = goldSearchStatus === 'ALL' || r.verified_state === goldSearchStatus;
+      return matchesCase && matchesUser && matchesRes && matchesStatus;
+    });
+  }, [rawResources, goldSearchCase, goldSearchUser, goldSearchResource, goldSearchStatus]);
 
   const exportCSV = () => {
     const headers = "case_id,customer_id,status,request_status,total_resources,completion_pct,audit_cutoff\n";
@@ -203,7 +225,7 @@ export const AnalyticsDashboard: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `enterprise_deletion_analytics_${activeDataset}_${Date.now()}.csv`;
+    a.download = `enterprise_deletion_analytics_challenge_${Date.now()}.csv`;
     a.click();
   };
 
@@ -211,133 +233,131 @@ export const AnalyticsDashboard: React.FC = () => {
     <div className="space-y-6">
       
       {/* =========================================================================
-          ENTERPRISE DELETION ANALYTICS DASHBOARD (Exact Match to Reference Design)
+          TOP LEVEL STREAMLIT MULTI-PAGE NAVIGATION BAR (Warm Cream / Orange Theme)
           ========================================================================= */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#EFE5DB] shadow-xs space-y-6">
+      <div className="bg-white rounded-3xl p-3 sm:p-4 border border-[#EFE5DB] shadow-xs flex flex-wrap items-center justify-between gap-3">
         
-        {/* Top Header Card */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-6 h-6 rounded-lg bg-[#FFEAE0] text-[#D94E1B] flex items-center justify-center">
-                <ShieldCheck className="w-4 h-4 text-[#E06D3B]" />
-              </div>
-              <h2 className="text-xl sm:text-2xl font-extrabold text-[#191D24] tracking-tight">
-                Enterprise Deletion Analytics Dashboard
-              </h2>
-            </div>
-            <p className="text-xs sm:text-sm text-[#5B6575]">
-              Grounded audit reporting &amp; evidence status metrics for synthetic datasets.
-            </p>
-          </div>
+        {/* Navigation Tabs */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <button
+            onClick={() => setStreamlitPage('forensic')}
+            className={`px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+              streamlitPage === 'forensic'
+                ? 'bg-[#191D24] text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-[#FAF7F2]'
+            }`}
+          >
+            <ShieldCheck className={`w-4 h-4 ${streamlitPage === 'forensic' ? 'text-[#EA580C]' : 'text-stone-400'}`} />
+            <span>Forensic Audit Analytics</span>
+          </button>
 
-          {/* Action Controls: Dashboard Mode, Dataset Selector, Export */}
-          <div className="flex flex-wrap items-center gap-2">
-            
-            {/* View Mode Toggle: Interactive vs Original Image Snapshot */}
-            <div className="inline-flex p-1 bg-[#FAF7F2] border border-[#EFE5DB] rounded-2xl text-xs font-medium">
-              <button
-                onClick={() => setDashboardMode('interactive')}
-                className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
-                  dashboardMode === 'interactive'
-                    ? 'bg-white text-stone-900 border border-[#EFE5DB] shadow-2xs font-bold'
-                    : 'text-stone-500 hover:text-stone-800'
-                }`}
-                title="Live responsive SVG dashboard matching reference metrics"
-              >
-                <BarChart2 className="w-3.5 h-3.5 text-[#EA580C]" />
-                Interactive View
-              </button>
-              <button
-                onClick={() => setDashboardMode('snapshot')}
-                className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
-                  dashboardMode === 'snapshot'
-                    ? 'bg-white text-stone-900 border border-[#EFE5DB] shadow-2xs font-bold'
-                    : 'text-stone-500 hover:text-stone-800'
-                }`}
-                title="Original high-resolution captured snapshot image"
-              >
-                <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
-                Audit Snapshot
-              </button>
-            </div>
+          <button
+            onClick={() => setStreamlitPage('overview')}
+            className={`px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+              streamlitPage === 'overview'
+                ? 'bg-[#191D24] text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-[#FAF7F2]'
+            }`}
+          >
+            <Layers className={`w-4 h-4 ${streamlitPage === 'overview' ? 'text-[#EA580C]' : 'text-stone-400'}`} />
+            <span>Overview & Lineage</span>
+          </button>
 
-            {/* Dataset Selector: Challenge 518 vs Synthetic 8 */}
-            <div className="inline-flex p-1 bg-[#FAF7F2] border border-[#EFE5DB] rounded-2xl text-xs font-medium">
-              <button
-                onClick={() => { setActiveDataset('challenge'); setSelectedCase(null); }}
-                className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
-                  activeDataset === 'challenge'
-                    ? 'bg-white text-stone-900 border border-[#EFE5DB] shadow-2xs font-bold'
-                    : 'text-stone-500 hover:text-stone-800'
-                }`}
-                title="Challenge Dataset (518 Cases)"
-              >
-                <Database className="w-3.5 h-3.5 text-[#EA580C]" />
-                Challenge (518)
-              </button>
-              <button
-                onClick={() => { setActiveDataset('synthetic'); setSelectedCase(null); }}
-                className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
-                  activeDataset === 'synthetic'
-                    ? 'bg-white text-stone-900 border border-[#EFE5DB] shadow-2xs font-bold'
-                    : 'text-stone-500 hover:text-stone-800'
-                }`}
-                title="Synthetic Clean Deletion Benchmark (8 Cases - 100% Complete)"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                Synthetic (8)
-              </button>
-            </div>
+          <button
+            onClick={() => setStreamlitPage('bronze')}
+            className={`px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+              streamlitPage === 'bronze'
+                ? 'bg-[#191D24] text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-[#FAF7F2]'
+            }`}
+          >
+            <Paperclip className={`w-4 h-4 ${streamlitPage === 'bronze' ? 'text-[#EA580C]' : 'text-stone-400'}`} />
+            <span>Bronze Analysis</span>
+          </button>
 
-            {/* Export CSV Button */}
-            <button
-              onClick={exportCSV}
-              className="px-3.5 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-2xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Export
-            </button>
-          </div>
+          <button
+            onClick={() => setStreamlitPage('silver')}
+            className={`px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+              streamlitPage === 'silver'
+                ? 'bg-[#191D24] text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-[#FAF7F2]'
+            }`}
+          >
+            <Database className={`w-4 h-4 ${streamlitPage === 'silver' ? 'text-[#EA580C]' : 'text-stone-400'}`} />
+            <span>Silver Analysis</span>
+          </button>
+
+          <button
+            onClick={() => setStreamlitPage('gold')}
+            className={`px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+              streamlitPage === 'gold'
+                ? 'bg-[#191D24] text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-[#FAF7F2]'
+            }`}
+          >
+            <FileSpreadsheet className={`w-4 h-4 ${streamlitPage === 'gold' ? 'text-[#EA580C]' : 'text-stone-400'}`} />
+            <span>Gold Analysis</span>
+          </button>
+
+          <button
+            onClick={() => setStreamlitPage('live')}
+            className={`px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+              streamlitPage === 'live'
+                ? 'bg-[#EA580C] text-white shadow-xs'
+                : 'text-[#EA580C] hover:bg-[#FFEAE0] bg-[#FAF7F2]'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Live Streamlit App</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          </button>
         </div>
 
-        {/* =========================================================================
-            MODE 1: ORIGINAL SNAPSHOT VIEW (Displays Image Exactly)
-            ========================================================================= */}
-        {dashboardMode === 'snapshot' ? (
-          <div className="space-y-4">
-            <div className="relative rounded-2xl border border-[#EFE5DB] overflow-hidden bg-stone-50 p-2 sm:p-4 flex flex-col items-center shadow-xs">
-              <div className="w-full flex justify-between items-center pb-3 text-xs text-stone-500 font-mono">
-                <span>Reference Snapshot &bull; Enterprise Deletion Analytics Dashboard</span>
-                <button
-                  onClick={() => setShowImageModal(true)}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-[#EFE5DB] text-stone-700 hover:text-[#EA580C] flex items-center gap-1.5 cursor-pointer font-sans font-semibold text-xs transition"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                  Expand Image
-                </button>
-              </div>
-              <img
-                src={analyticsScreenshot}
-                alt="Enterprise Deletion Analytics Dashboard"
-                className="w-full h-auto rounded-xl shadow-xs border border-stone-200 cursor-pointer object-contain max-h-[700px]"
-                onClick={() => setShowImageModal(true)}
-              />
-            </div>
-          </div>
-        ) : (
-          /* =========================================================================
-             MODE 2: INTERACTIVE DASHBOARD (Exact Reproduction with SVG Charts & Metrics)
-             ========================================================================= */
-          <div className="space-y-5">
+        {/* Global Export & Source indicator */}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-mono text-stone-500 bg-[#FAF7F2] px-2.5 py-1 rounded-xl border border-[#EFE5DB]">
+            Grounded &bull; 518 Cases
+          </span>
+          <button
+            onClick={exportCSV}
+            className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export CSV
+          </button>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          PAGE 1: FORENSIC AUDIT ANALYTICS (Grounded 518 Deletion Dashboard)
+          ========================================================================= */}
+      {streamlitPage === 'forensic' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#EFE5DB] shadow-xs space-y-6">
             
+            {/* Top Header Card */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-6 h-6 rounded-lg bg-[#FFEAE0] text-[#D94E1B] flex items-center justify-center">
+                    <ShieldCheck className="w-4 h-4 text-[#E06D3B]" />
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-extrabold text-[#191D24] tracking-tight">
+                    Forensic Deletion Audit Analytics
+                  </h2>
+                </div>
+                <p className="text-xs sm:text-sm text-[#5B6575]">
+                  Quantitative breakdown of deletion compliance, surviving records, policy violations, and replication drift across the 518-case dataset.
+                </p>
+              </div>
+            </div>
+
             {/* ROW 1: TOP 5 METRIC CARDS */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
               
-              {/* Metric 1: Synthetic requests */}
               <div className="bg-white rounded-2xl p-4 border border-[#EFE5DB] shadow-2xs flex flex-col justify-between hover:border-stone-400 transition">
                 <div className="flex items-center justify-between text-stone-600">
-                  <span className="text-xs font-medium">Synthetic requests</span>
+                  <span className="text-xs font-medium">Deletion requests</span>
                   <FileSpreadsheet className="w-4 h-4 text-stone-400 stroke-[1.5]" />
                 </div>
                 <div className="text-3xl font-black text-stone-900 mt-2 tracking-tight">
@@ -345,10 +365,9 @@ export const AnalyticsDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Metric 2: Synthetic users */}
               <div className="bg-white rounded-2xl p-4 border border-[#EFE5DB] shadow-2xs flex flex-col justify-between hover:border-stone-400 transition">
                 <div className="flex items-center justify-between text-stone-600">
-                  <span className="text-xs font-medium">Synthetic users</span>
+                  <span className="text-xs font-medium">Unique users</span>
                   <Users className="w-4 h-4 text-stone-400 stroke-[1.5]" />
                 </div>
                 <div className="text-3xl font-black text-stone-900 mt-2 tracking-tight">
@@ -356,7 +375,6 @@ export const AnalyticsDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Metric 3: Identity changes */}
               <div className="bg-white rounded-2xl p-4 border border-[#EFE5DB] shadow-2xs flex flex-col justify-between hover:border-stone-400 transition">
                 <div className="flex items-center justify-between text-stone-600">
                   <span className="text-xs font-medium">Identity changes</span>
@@ -367,7 +385,6 @@ export const AnalyticsDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Metric 4: System activities */}
               <div className="bg-white rounded-2xl p-4 border border-[#EFE5DB] shadow-2xs flex flex-col justify-between hover:border-stone-400 transition">
                 <div className="flex items-center justify-between text-stone-600">
                   <span className="text-xs font-medium">System activities</span>
@@ -378,7 +395,6 @@ export const AnalyticsDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Metric 5: Evidence files */}
               <div className="bg-white rounded-2xl p-4 border border-[#EFE5DB] shadow-2xs flex flex-col justify-between hover:border-stone-400 transition col-span-2 sm:col-span-1">
                 <div className="flex items-center justify-between text-stone-600">
                   <span className="text-xs font-medium">Evidence files</span>
@@ -394,15 +410,12 @@ export const AnalyticsDashboard: React.FC = () => {
             {/* ROW 2: TWO CHARTS SIDE-BY-SIDE */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
               
-              {/* LEFT CHART: Synthetic deletion status (42% width) */}
+              {/* LEFT CHART: Deletion status */}
               <div className="lg:col-span-5 bg-white rounded-2xl p-4 sm:p-5 border border-[#EFE5DB] shadow-2xs flex flex-col justify-between">
-                
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <h3 className="text-xs sm:text-sm font-bold text-stone-900">
-                    Synthetic deletion status
+                    Deletion status distribution
                   </h3>
-
-                  {/* Legend on Top Right */}
                   <div className="text-[10px] space-y-1 font-mono text-stone-600 shrink-0">
                     <span className="text-stone-400 text-[9px] uppercase font-bold block mb-0.5">status</span>
                     <div className="flex items-center gap-1.5">
@@ -420,10 +433,7 @@ export const AnalyticsDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                {/* SVG Bar Chart for Status */}
                 <div className="relative h-56 w-full flex items-end pt-6 pb-6 pl-8 pr-2">
-                  
-                  {/* Y-Axis Label and Grid Lines */}
                   <div className="absolute left-0 top-0 bottom-6 w-7 flex flex-col justify-between text-[10px] font-mono text-stone-400 select-none">
                     <span>400</span>
                     <span>300</span>
@@ -431,12 +441,9 @@ export const AnalyticsDashboard: React.FC = () => {
                     <span>100</span>
                     <span className="text-right">0</span>
                   </div>
-
                   <span className="absolute left-0 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] text-stone-400 font-mono select-none -translate-x-3">
                     count
                   </span>
-
-                  {/* Horizontal Gridlines */}
                   <div className="absolute left-8 right-2 top-2 bottom-6 flex flex-col justify-between pointer-events-none">
                     <div className="border-b border-stone-100 w-full h-0"></div>
                     <div className="border-b border-stone-100 w-full h-0"></div>
@@ -445,10 +452,7 @@ export const AnalyticsDashboard: React.FC = () => {
                     <div className="border-b border-stone-200 w-full h-0"></div>
                   </div>
 
-                  {/* Bars Container */}
                   <div className="relative w-full h-full flex items-end justify-around z-10">
-                    
-                    {/* Bar 1: INCOMPLETE (462) */}
                     <div className="flex flex-col items-center h-full justify-end group">
                       <span className="text-[10px] font-mono font-bold text-stone-700 mb-1">
                         {currentMetrics.statusBreakdown.incomplete}
@@ -460,7 +464,6 @@ export const AnalyticsDashboard: React.FC = () => {
                       ></div>
                     </div>
 
-                    {/* Bar 2: COMPLETE (47) */}
                     <div className="flex flex-col items-center h-full justify-end group">
                       <span className="text-[10px] font-mono font-bold text-stone-700 mb-1">
                         {currentMetrics.statusBreakdown.complete}
@@ -472,7 +475,6 @@ export const AnalyticsDashboard: React.FC = () => {
                       ></div>
                     </div>
 
-                    {/* Bar 3: NOT_APPLICABLE (9) */}
                     <div className="flex flex-col items-center h-full justify-end group">
                       <span className="text-[10px] font-mono font-bold text-stone-700 mb-1">
                         {currentMetrics.statusBreakdown.notApplicable}
@@ -483,33 +485,23 @@ export const AnalyticsDashboard: React.FC = () => {
                         title={`NOT_APPLICABLE: ${currentMetrics.statusBreakdown.notApplicable} cases`}
                       ></div>
                     </div>
-
                   </div>
-
                 </div>
 
-                {/* X-Axis Labels and Subtitle */}
                 <div className="w-full pl-8 pr-2 flex justify-around text-[10px] font-mono text-stone-600 font-semibold select-none pt-1 border-t border-stone-200">
                   <span className="text-center w-16">INCOMPLETE</span>
                   <span className="text-center w-16">COMPLETE</span>
                   <span className="text-center w-16 truncate">NOT_APPLICABLE</span>
                 </div>
-                <div className="text-center text-[10px] text-stone-400 font-mono mt-1">
-                  status
-                </div>
-
+                <div className="text-center text-[10px] text-stone-400 font-mono mt-1">status</div>
               </div>
 
-              {/* RIGHT CHART: Cases by remediation-plan length (58% width) */}
+              {/* RIGHT CHART: Cases by remediation-plan length */}
               <div className="lg:col-span-7 bg-white rounded-2xl p-4 sm:p-5 border border-[#EFE5DB] shadow-2xs flex flex-col justify-between">
-                
-                {/* Header with Plotly Toolbar Icons */}
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs sm:text-sm font-bold text-stone-900">
                     Cases by remediation-plan length
                   </h3>
-
-                  {/* Plotly-like Toolbar */}
                   <div className="hidden sm:flex items-center gap-1.5 text-stone-400 text-xs">
                     <span title="Download plot as png"><Camera className="w-3.5 h-3.5 hover:text-stone-700 cursor-pointer" /></span>
                     <span title="Zoom in"><ZoomIn className="w-3.5 h-3.5 hover:text-stone-700 cursor-pointer" /></span>
@@ -519,22 +511,16 @@ export const AnalyticsDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                {/* SVG Histogram Chart */}
                 <div className="relative h-56 w-full flex items-end pt-6 pb-6 pl-8 pr-2">
-                  
-                  {/* Y-Axis Label and Grid Lines */}
                   <div className="absolute left-0 top-0 bottom-6 w-7 flex flex-col justify-between text-[10px] font-mono text-stone-400 select-none">
                     <span>150</span>
                     <span>100</span>
                     <span>50</span>
                     <span className="text-right">0</span>
                   </div>
-
                   <span className="absolute left-0 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] text-stone-400 font-mono select-none -translate-x-4">
                     case_count
                   </span>
-
-                  {/* Horizontal Gridlines */}
                   <div className="absolute left-8 right-2 top-2 bottom-6 flex flex-col justify-between pointer-events-none">
                     <div className="border-b border-stone-100 w-full h-0"></div>
                     <div className="border-b border-stone-100 w-full h-0"></div>
@@ -542,7 +528,6 @@ export const AnalyticsDashboard: React.FC = () => {
                     <div className="border-b border-stone-200 w-full h-0"></div>
                   </div>
 
-                  {/* Histogram Bars Container */}
                   <div className="relative w-full h-full flex items-end justify-between gap-1 z-10 px-1">
                     {currentMetrics.stepDistribution.map((item) => {
                       const barHeightPct = item.count > 0 ? (item.count / 160) * 100 : 0;
@@ -564,10 +549,8 @@ export const AnalyticsDashboard: React.FC = () => {
                       );
                     })}
                   </div>
-
                 </div>
 
-                {/* X-Axis Labels and Subtitle */}
                 <div className="w-full pl-8 pr-2 flex justify-between text-[10px] font-mono text-stone-500 font-semibold select-none pt-1 border-t border-stone-200">
                   <span>0</span>
                   <span>2</span>
@@ -578,10 +561,7 @@ export const AnalyticsDashboard: React.FC = () => {
                   <span>12</span>
                   <span>14</span>
                 </div>
-                <div className="text-center text-[10px] text-stone-400 font-mono mt-1">
-                  step_count
-                </div>
-
+                <div className="text-center text-[10px] text-stone-400 font-mono mt-1">step_count</div>
               </div>
 
             </div>
@@ -589,7 +569,6 @@ export const AnalyticsDashboard: React.FC = () => {
             {/* ROW 3: BOTTOM 5 METRIC CARDS */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
               
-              {/* Bottom Card 1: Complete */}
               <div className="bg-white rounded-2xl p-4 border border-[#EFE5DB] shadow-2xs flex flex-col justify-between hover:border-stone-400 transition">
                 <div className="flex items-center justify-between text-stone-600">
                   <span className="text-xs font-medium">Complete</span>
@@ -602,7 +581,6 @@ export const AnalyticsDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Bottom Card 2: Incomplete */}
               <div className="bg-white rounded-2xl p-4 border border-[#EFE5DB] shadow-2xs flex flex-col justify-between hover:border-stone-400 transition">
                 <div className="flex items-center justify-between text-stone-600">
                   <span className="text-xs font-medium">Incomplete</span>
@@ -613,7 +591,6 @@ export const AnalyticsDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Bottom Card 3: Not applicable */}
               <div className="bg-white rounded-2xl p-4 border border-[#EFE5DB] shadow-2xs flex flex-col justify-between hover:border-stone-400 transition">
                 <div className="flex items-center justify-between text-stone-600">
                   <span className="text-xs font-medium">Not applicable</span>
@@ -624,7 +601,6 @@ export const AnalyticsDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Bottom Card 4: Unverified */}
               <div className="bg-white rounded-2xl p-4 border border-[#EFE5DB] shadow-2xs flex flex-col justify-between hover:border-stone-400 transition">
                 <div className="flex items-center justify-between text-stone-600">
                   <span className="text-xs font-medium">Unverified</span>
@@ -635,7 +611,6 @@ export const AnalyticsDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Bottom Card 5: Average steps */}
               <div className="bg-white rounded-2xl p-4 border border-[#EFE5DB] shadow-2xs flex flex-col justify-between hover:border-stone-400 transition col-span-2 sm:col-span-1">
                 <div className="flex items-center justify-between text-stone-600">
                   <span className="text-xs font-medium">Average steps</span>
@@ -649,384 +624,1031 @@ export const AnalyticsDashboard: React.FC = () => {
             </div>
 
           </div>
-        )}
 
-      </div>
+          {/* AUDIT DETAILS TABS: CASES, MICROSERVICES & RESOURCE LEVEL INSPECTION */}
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#EFE5DB] shadow-xs space-y-5">
+            
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EFE5DB] pb-3">
+              <div className="flex gap-4 sm:gap-6 text-sm font-semibold">
+                <button
+                  onClick={() => setActiveTab('cases')}
+                  className={`pb-3 transition relative flex items-center gap-2 cursor-pointer ${
+                    activeTab === 'cases' ? 'text-[#EA580C] font-bold' : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Audited Cases ({filteredCases.length})</span>
+                  {activeTab === 'cases' && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#EA580C] rounded-full"></span>
+                  )}
+                </button>
 
-      {/* =========================================================================
-          AUDIT DETAILS TABS: CASES, MICROSERVICES & RESOURCE LEVEL INSPECTION
-          ========================================================================= */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#EFE5DB] shadow-xs space-y-5">
-        
-        {/* Tab Switcher Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EFE5DB] pb-3">
-          <div className="flex gap-4 sm:gap-6 text-sm font-semibold">
-            <button
-              onClick={() => setActiveTab('cases')}
-              className={`pb-3 transition relative flex items-center gap-2 cursor-pointer ${
-                activeTab === 'cases' ? 'text-[#EA580C] font-bold' : 'text-stone-500 hover:text-stone-800'
-              }`}
-            >
-              <Database className="w-4 h-4" />
-              Customer Case Registry ({rawCases.length})
-              {activeTab === 'cases' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#EA580C] rounded-full" />
-              )}
-            </button>
+                <button
+                  onClick={() => setActiveTab('systems')}
+                  className={`pb-3 transition relative flex items-center gap-2 cursor-pointer ${
+                    activeTab === 'systems' ? 'text-[#EA580C] font-bold' : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  <Database className="w-4 h-4" />
+                  <span>Microservices ({systems.length})</span>
+                  {activeTab === 'systems' && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#EA580C] rounded-full"></span>
+                  )}
+                </button>
 
-            <button
-              onClick={() => setActiveTab('systems')}
-              className={`pb-3 transition relative flex items-center gap-2 cursor-pointer ${
-                activeTab === 'systems' ? 'text-[#EA580C] font-bold' : 'text-stone-500 hover:text-stone-800'
-              }`}
-            >
-              <Layers className="w-4 h-4" />
-              Microservice Matrix ({systems.length} Systems)
-              {activeTab === 'systems' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#EA580C] rounded-full" />
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab('resources')}
-              className={`pb-3 transition relative flex items-center gap-2 cursor-pointer ${
-                activeTab === 'resources' ? 'text-[#EA580C] font-bold' : 'text-stone-500 hover:text-stone-800'
-              }`}
-            >
-              <AlertTriangle className="w-4 h-4" />
-              Resource Breakdown ({rawResources.length})
-              {activeTab === 'resources' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#EA580C] rounded-full" />
-              )}
-            </button>
-          </div>
-
-          <span className="text-xs font-mono text-stone-500">
-            Build Timestamp: <strong className="text-stone-800">{metadata.build_timestamp || '2026-11-05T05:14:41Z'}</strong>
-          </span>
-        </div>
-
-        {/* TAB 1: CASES TABLE WITH SEARCH & FILTER */}
-        {activeTab === 'cases' && (
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search by case ID, customer ID, or request text..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#FAF7F2] border border-[#EFE5DB] rounded-2xl text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#EA580C] shadow-2xs font-medium"
-                />
+                <button
+                  onClick={() => setActiveTab('resources')}
+                  className={`pb-3 transition relative flex items-center gap-2 cursor-pointer ${
+                    activeTab === 'resources' ? 'text-[#EA580C] font-bold' : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  <Layers className="w-4 h-4" />
+                  <span>Resource Level ({filteredResources.length})</span>
+                  {activeTab === 'resources' && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#EA580C] rounded-full"></span>
+                  )}
+                </button>
               </div>
 
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3.5 py-2.5 bg-[#FAF7F2] border border-[#EFE5DB] rounded-2xl text-xs text-stone-900 font-bold focus:outline-none focus:border-[#EA580C] shadow-2xs cursor-pointer font-mono"
-              >
-                <option value="ALL">All Statuses ({rawCases.length})</option>
-                <option value="INCOMPLETE">INCOMPLETE (462)</option>
-                <option value="COMPLETE">COMPLETE (47)</option>
-                <option value="NOT_APPLICABLE">NOT_APPLICABLE (9)</option>
-              </select>
-            </div>
+              {/* Filters & Search */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by ID, Customer..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8 pr-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#EFE5DB] rounded-xl text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-[#EA580C] w-48 sm:w-56"
+                  />
+                </div>
 
-            <div className="overflow-x-auto rounded-2xl border border-[#EFE5DB]">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-[#FAF7F2] text-stone-600 uppercase tracking-wider text-[10px] border-b border-[#EFE5DB]">
-                  <tr>
-                    <th className="py-3 px-4 font-bold">Case ID</th>
-                    <th className="py-3 px-4 font-bold">Customer ID</th>
-                    <th className="py-3 px-4 font-bold">Audit Status</th>
-                    <th className="py-3 px-4 font-bold">Resources</th>
-                    <th className="py-3 px-4 font-bold">Completion %</th>
-                    <th className="py-3 px-4 font-bold">Cutoff</th>
-                    <th className="py-3 px-4 font-bold text-right">Inspect</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px] bg-white">
-                  {filteredCases.slice(0, 100).map((c) => (
-                    <tr key={c.case_id} className="hover:bg-[#FAF7F2] transition">
-                      <td className="py-3 px-4 font-bold text-stone-900">{c.case_id}</td>
-                      <td className="py-3 px-4 text-[#EA580C] font-semibold">{c.customer_id}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-sans font-bold border ${
-                          c.overall_deletion_status === 'COMPLETE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                          c.overall_deletion_status === 'INCOMPLETE' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                          'bg-stone-50 text-stone-700 border-stone-200'
-                        }`}>
-                          {c.overall_deletion_status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-sans text-stone-600">
-                        {c.total_resource_count} records
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`font-bold ${c.completion_percentage === 100 ? 'text-emerald-600' : c.completion_percentage > 0 ? 'text-amber-600' : 'text-stone-500'}`}>
-                          {c.completion_percentage}%
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-stone-500 text-[10px]">
-                        {c.audit_cutoff ? c.audit_cutoff.replace('T', ' ').slice(0, 16) : 'N/A'}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => setSelectedCase(c)}
-                          className="px-3 py-1 bg-[#FFEAE0] hover:bg-[#FDD9C8] text-[#D94E1B] rounded-xl text-[10px] font-sans font-bold transition inline-flex items-center gap-1 cursor-pointer"
-                        >
-                          <Eye className="w-3 h-3" />
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: MICROSERVICES TABLE */}
-        {activeTab === 'systems' && (
-          <div className="overflow-x-auto rounded-2xl border border-[#EFE5DB]">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-[#FAF7F2] text-stone-600 uppercase tracking-wider text-[10px] border-b border-[#EFE5DB]">
-                <tr>
-                  <th className="py-3 px-4 font-bold">System ID</th>
-                  <th className="py-3 px-4 font-bold text-center">Tracked Resources</th>
-                  <th className="py-3 px-4 font-bold text-center text-rose-600">Incomplete</th>
-                  <th className="py-3 px-4 font-bold text-center text-amber-600">Unverified</th>
-                  <th className="py-3 px-4 font-bold text-center text-emerald-600">Deleted</th>
-                  <th className="py-3 px-4 font-bold text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px] bg-white">
-                {systems.map((sys) => (
-                  <tr key={sys.system_id} className="hover:bg-[#FAF7F2] transition">
-                    <td className="py-2.5 px-4 font-bold text-stone-900">{sys.system_id}</td>
-                    <td className="py-2.5 px-4 text-center text-stone-600">{sys.total_resources}</td>
-                    <td className="py-2.5 px-4 text-center text-rose-600 font-bold">{sys.incomplete_count}</td>
-                    <td className="py-2.5 px-4 text-center text-amber-600 font-bold">{sys.unverified_count}</td>
-                    <td className="py-2.5 px-4 text-center text-emerald-600 font-bold">{sys.deleted_count}</td>
-                    <td className="py-2.5 px-4 text-right">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        sys.incomplete_count === 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
-                      }`}>
-                        {sys.incomplete_count === 0 ? 'COMPLIANT' : 'VIOLATIONS'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* TAB 3: RESOURCE VIOLATION LEVEL */}
-        {activeTab === 'resources' && (
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search resources by ID, system, or type..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#FAF7F2] border border-[#EFE5DB] rounded-2xl text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#EA580C] shadow-2xs font-medium"
-                />
-              </div>
-
-              <select
-                value={systemFilter}
-                onChange={(e) => setSystemFilter(e.target.value)}
-                className="px-3.5 py-2.5 bg-[#FAF7F2] border border-[#EFE5DB] rounded-2xl text-xs text-stone-900 font-bold focus:outline-none focus:border-[#EA580C] shadow-2xs font-mono"
-              >
-                <option value="ALL">All Systems</option>
-                {systems.map((s) => (
-                  <option key={s.system_id} value={s.system_id}>{s.system_id}</option>
-                ))}
-              </select>
-
-              <select
-                value={resourceStateFilter}
-                onChange={(e) => setResourceStateFilter(e.target.value)}
-                className="px-3.5 py-2.5 bg-[#FAF7F2] border border-[#EFE5DB] rounded-2xl text-xs text-stone-900 font-bold focus:outline-none focus:border-[#EA580C] shadow-2xs font-mono"
-              >
-                <option value="ALL">All States</option>
-                <option value="INCOMPLETE">INCOMPLETE</option>
-                <option value="DELETED">DELETED</option>
-                <option value="RETAINED">RETAINED</option>
-                <option value="UNVERIFIED">UNVERIFIED</option>
-              </select>
-            </div>
-
-            <div className="overflow-x-auto rounded-2xl border border-[#EFE5DB]">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-[#FAF7F2] text-stone-600 uppercase tracking-wider text-[10px] border-b border-[#EFE5DB]">
-                  <tr>
-                    <th className="py-3 px-4 font-bold">Resource ID</th>
-                    <th className="py-3 px-4 font-bold">Case ID</th>
-                    <th className="py-3 px-4 font-bold">System</th>
-                    <th className="py-3 px-4 font-bold">Verified State</th>
-                    <th className="py-3 px-4 font-bold">Policy Action</th>
-                    <th className="py-3 px-4 font-bold">Classification Reason</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px] bg-white">
-                  {filteredResources.slice(0, 100).map((r) => (
-                    <tr key={`${r.case_id}_${r.resource_id}`} className="hover:bg-[#FAF7F2] transition">
-                      <td className="py-2.5 px-4 font-bold text-stone-900">{r.resource_id}</td>
-                      <td className="py-2.5 px-4 text-[#EA580C] font-semibold">{r.case_id}</td>
-                      <td className="py-2.5 px-4 text-stone-600">{r.system_id}</td>
-                      <td className="py-2.5 px-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-sans font-bold ${
-                          r.verified_state === 'DELETED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                          r.verified_state === 'INCOMPLETE' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
-                          'bg-amber-50 text-amber-700 border border-amber-200'
-                        }`}>
-                          {r.verified_state}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-4 text-stone-700">{r.policy_action}</td>
-                      <td className="py-2.5 px-4 font-sans text-stone-500 max-w-xs truncate" title={r.classification_reason}>
-                        {r.classification_reason}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-      </div>
-
-      {/* =========================================================================
-          MODAL: CASE DRILL-DOWN INSPECTION
-          ========================================================================= */}
-      {selectedCase && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-7 border border-[#EFE5DB] shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between border-b border-[#EFE5DB] pb-4">
-              <div>
-                <span className="text-xs font-mono font-bold text-[#EA580C] uppercase tracking-wider">
-                  Case Investigation Deep Dive
-                </span>
-                <h3 className="text-xl font-extrabold text-stone-900 mt-0.5">
-                  {selectedCase.case_id} &bull; {selectedCase.customer_id}
-                </h3>
-              </div>
-              <button
-                onClick={() => setSelectedCase(null)}
-                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-500 hover:text-stone-900 flex items-center justify-center font-bold text-sm cursor-pointer"
-              >
-                &times;
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
-              <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#EFE5DB]">
-                <span className="text-[10px] text-stone-400 block uppercase">Audit Decision</span>
-                <span className="font-bold text-stone-900">{selectedCase.overall_deletion_status}</span>
-              </div>
-              <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#EFE5DB]">
-                <span className="text-[10px] text-stone-400 block uppercase">Completion</span>
-                <span className="font-bold text-[#EA580C]">{selectedCase.completion_percentage}%</span>
-              </div>
-              <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#EFE5DB]">
-                <span className="text-[10px] text-stone-400 block uppercase">Cutoff Date</span>
-                <span className="font-bold text-stone-700">{selectedCase.audit_cutoff?.slice(0, 10)}</span>
-              </div>
-              <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#EFE5DB]">
-                <span className="text-[10px] text-stone-400 block uppercase">Resources</span>
-                <span className="font-bold text-stone-900">{selectedCase.total_resource_count}</span>
+                {activeTab === 'cases' && (
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="text-xs bg-[#FAF7F2] border border-[#EFE5DB] rounded-xl px-2.5 py-1.5 text-stone-700 cursor-pointer"
+                  >
+                    <option value="ALL">All Statuses</option>
+                    <option value="INCOMPLETE">INCOMPLETE</option>
+                    <option value="COMPLETE">COMPLETE</option>
+                    <option value="NOT_APPLICABLE">NOT_APPLICABLE</option>
+                  </select>
+                )}
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-[#FAF7F2] border border-[#EFE5DB] text-xs">
-              <span className="text-[10px] uppercase font-bold text-stone-400 font-mono block mb-1">Request Text</span>
-              <p className="text-stone-700 font-sans italic">&quot;{selectedCase.request_text}&quot;</p>
-            </div>
-
-            <div>
-              <h4 className="text-xs font-bold text-stone-900 uppercase tracking-tight mb-2 font-mono">
-                Scoped Resources ({resourcesByCase[selectedCase.case_id]?.length || 0})
-              </h4>
-              <div className="overflow-x-auto rounded-xl border border-[#EFE5DB]">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#FAF7F2] text-stone-600 text-[10px] border-b border-[#EFE5DB]">
+            {/* TAB CONTENT 1: CASES TABLE */}
+            {activeTab === 'cases' && (
+              <div className="overflow-x-auto rounded-2xl border border-[#EFE5DB]">
+                <table className="w-full text-left text-xs font-sans">
+                  <thead className="bg-[#FAF7F2] border-b border-[#EFE5DB] text-stone-600 font-semibold uppercase tracking-wider text-[10px]">
                     <tr>
-                      <th className="py-2.5 px-3 font-bold">Resource</th>
-                      <th className="py-2.5 px-3 font-bold">System</th>
-                      <th className="py-2.5 px-3 font-bold">State</th>
-                      <th className="py-2.5 px-3 font-bold">Policy</th>
-                      <th className="py-2.5 px-3 font-bold">Reason</th>
+                      <th className="py-3 px-4">Case ID</th>
+                      <th className="py-3 px-4">Customer</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4">Reported</th>
+                      <th className="py-3 px-4">Resources</th>
+                      <th className="py-3 px-4">Completion</th>
+                      <th className="py-3 px-4">Audit Cutoff</th>
+                      <th className="py-3 px-4 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px]">
-                    {(resourcesByCase[selectedCase.case_id] || []).map((r) => (
-                      <tr key={r.resource_id}>
-                        <td className="py-2 px-3 font-bold text-stone-900">{r.resource_id}</td>
-                        <td className="py-2 px-3 text-[#EA580C]">{r.system_id}</td>
-                        <td className="py-2 px-3 font-sans font-bold">
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] ${
-                            r.verified_state === 'DELETED' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                    {filteredCases.slice(0, 50).map((c) => {
+                      const isSelected = selectedCase?.case_id === c.case_id;
+                      return (
+                        <tr 
+                          key={c.case_id}
+                          onClick={() => setSelectedCase(isSelected ? null : c)}
+                          className={`hover:bg-[#FAF7F2] transition cursor-pointer ${
+                            isSelected ? 'bg-orange-50/60' : ''
+                          }`}
+                        >
+                          <td className="py-3 px-4 font-bold text-stone-900">{c.case_id}</td>
+                          <td className="py-3 px-4 text-stone-600">{c.customer_id}</td>
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              c.overall_deletion_status === 'COMPLETE' 
+                                ? 'bg-emerald-100 text-emerald-800' 
+                                : c.overall_deletion_status === 'INCOMPLETE'
+                                ? 'bg-sky-100 text-sky-800'
+                                : 'bg-stone-200 text-stone-700'
+                            }`}>
+                              {c.overall_deletion_status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-stone-500">{c.request_status}</td>
+                          <td className="py-3 px-4 text-stone-700">{c.total_resource_count}</td>
+                          <td className="py-3 px-4 font-sans">
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 bg-stone-100 rounded-full h-1.5 overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full ${
+                                    c.completion_percentage === 100 ? 'bg-emerald-500' : 'bg-[#EA580C]'
+                                  }`}
+                                  style={{ width: `${c.completion_percentage}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-[10px] text-stone-500">{c.completion_percentage}%</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-stone-400 text-[10px]">{c.audit_cutoff.split('T')[0]}</td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCase(isSelected ? null : c);
+                              }}
+                              className="px-2 py-1 rounded bg-[#FAF7F2] border border-[#EFE5DB] hover:bg-stone-100 text-stone-700 text-[10px] font-sans font-semibold cursor-pointer"
+                            >
+                              {isSelected ? 'Close' : 'Inspect'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* TAB CONTENT 2: SYSTEMS BREAKDOWN */}
+            {activeTab === 'systems' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                {systems.map((sys) => {
+                  const compPct = sys.total_resources > 0 
+                    ? Math.round((sys.deleted_count / sys.total_resources) * 100) 
+                    : 100;
+                  return (
+                    <div 
+                      key={sys.system_id}
+                      className="p-4 rounded-2xl bg-white border border-[#EFE5DB] shadow-2xs hover:border-stone-400 transition space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-stone-900 truncate">
+                          {sys.system_id.replace('_', ' ')}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#FAF7F2] text-stone-600 border border-[#EFE5DB]">
+                          {sys.total_resources} res
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-mono text-stone-500">
+                          <span>Deleted: {sys.deleted_count}</span>
+                          <span className="font-bold text-stone-800">{compPct}%</span>
+                        </div>
+                        <div className="w-full bg-stone-100 rounded-full h-1.5 overflow-hidden">
+                          <div 
+                            className="bg-[#EA580C] h-full rounded-full transition-all"
+                            style={{ width: `${compPct}%` }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-[#EFE5DB] flex justify-between text-[10px] font-mono text-stone-400">
+                        <span>Anon: {sys.anonymized_count}</span>
+                        <span>Arch: {sys.archived_count}</span>
+                        <span>Pending: {sys.pending_count}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* TAB CONTENT 3: RESOURCES TABLE */}
+            {activeTab === 'resources' && (
+              <div className="overflow-x-auto rounded-2xl border border-[#EFE5DB]">
+                <table className="w-full text-left text-xs font-sans">
+                  <thead className="bg-[#FAF7F2] border-b border-[#EFE5DB] text-stone-600 font-semibold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">Resource ID</th>
+                      <th className="py-3 px-4">Case ID</th>
+                      <th className="py-3 px-4">System</th>
+                      <th className="py-3 px-4">Type</th>
+                      <th className="py-3 px-4">Silver State</th>
+                      <th className="py-3 px-4">Verified State</th>
+                      <th className="py-3 px-4">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px]">
+                    {filteredResources.slice(0, 50).map((r) => (
+                      <tr key={r.resource_id} className="hover:bg-[#FAF7F2] transition">
+                        <td className="py-3 px-4 font-bold text-stone-900">{r.resource_id}</td>
+                        <td className="py-3 px-4 text-stone-600">{r.case_id}</td>
+                        <td className="py-3 px-4 text-stone-500">{r.system_id}</td>
+                        <td className="py-3 px-4 text-stone-700">{r.resource_type}</td>
+                        <td className="py-3 px-4">
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-stone-100 text-stone-700">
+                            {r.silver_state}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                            r.verified_state === 'DELETED' 
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
                           }`}>
                             {r.verified_state}
                           </span>
                         </td>
-                        <td className="py-2 px-3 text-stone-600">{r.policy_action}</td>
-                        <td className="py-2 px-3 font-sans text-stone-500 text-[10px] max-w-xs truncate" title={r.classification_reason}>
-                          {r.classification_reason}
-                        </td>
+                        <td className="py-3 px-4 text-stone-500 text-[10px]">{r.policy_action}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+            )}
+
+          </div>
+
+          {/* CASE INSPECTION MODAL */}
+          {selectedCase && (
+            <div className="p-5 bg-white rounded-3xl border-2 border-[#EA580C]/30 shadow-lg space-y-4 animate-in fade-in">
+              <div className="flex items-center justify-between pb-3 border-b border-[#EFE5DB]">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-orange-100 text-[#EA580C] flex items-center justify-center font-bold font-mono text-xs">
+                    {selectedCase.case_id.replace('case_', '#')}
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-sm text-stone-900">
+                      Case Inspection: {selectedCase.case_id} ({selectedCase.customer_id})
+                    </h4>
+                    <p className="text-[11px] text-stone-500 font-mono">
+                      Status: {selectedCase.overall_deletion_status} &bull; Audit Cutoff: {selectedCase.audit_cutoff}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedCase(null)}
+                  className="px-3 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-semibold cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#EFE5DB] text-xs font-mono text-stone-700">
+                <span className="text-stone-400 font-sans block mb-1 font-semibold text-[10px] uppercase">Original Request Text:</span>
+                "{selectedCase.request_text}"
+              </div>
+
+              <div className="space-y-2">
+                <h5 className="text-xs font-bold text-stone-800 uppercase tracking-wider font-mono">
+                  Associated System Resources ({resourcesByCase[selectedCase.case_id]?.length || 0})
+                </h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {resourcesByCase[selectedCase.case_id]?.map((res) => (
+                    <div key={res.resource_id} className="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EFE5DB] text-xs font-mono">
+                      <div className="font-bold text-stone-900">{res.resource_id}</div>
+                      <div className="text-[10px] text-stone-500">{res.system_id} ({res.resource_type})</div>
+                      <div className="mt-1 flex items-center justify-between text-[10px]">
+                        <span className="text-stone-400">Verified:</span>
+                        <span className="font-bold text-[#EA580C]">{res.verified_state}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* =========================================================================
+          PAGE 2: OVERVIEW & MEDALLION LINEAGE (Streamlit Tab 1 Replication)
+          ========================================================================= */}
+      {streamlitPage === 'overview' && (
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#EFE5DB] shadow-xs space-y-6">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-6 h-6 rounded-lg bg-[#FFEAE0] text-[#D94E1B] flex items-center justify-center">
+                <Layers className="w-4 h-4 text-[#E06D3B]" />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-[#191D24] tracking-tight">
+                Medallion Warehouse Overview & Data Lineage
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-[#5B6575]">
+              Real-time synchronization metrics across Bronze raw evidence, Silver Lakehouse tables, and Gold audited resources.
+            </p>
+          </div>
+
+          {/* Top 5 Metrics Container */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+            <div className="bg-[#FAF7F2] rounded-2xl p-4 border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">Bronze Evidence</div>
+              <div className="text-3xl font-black text-stone-900 mt-2">{evidenceList.length}</div>
+              <div className="text-[10px] text-stone-400 mt-1 font-mono">94 source files</div>
+            </div>
+            <div className="bg-[#FAF7F2] rounded-2xl p-4 border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">Silver Requests</div>
+              <div className="text-3xl font-black text-stone-900 mt-2">{silverWarehouseData.counts.requests}</div>
+              <div className="text-[10px] text-stone-400 mt-1 font-mono">fact_deletion_request</div>
+            </div>
+            <div className="bg-[#FAF7F2] rounded-2xl p-4 border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">Silver Resources</div>
+              <div className="text-3xl font-black text-stone-900 mt-2">{silverWarehouseData.counts.resources}</div>
+              <div className="text-[10px] text-stone-400 mt-1 font-mono">fact_resource</div>
+            </div>
+            <div className="bg-[#FAF7F2] rounded-2xl p-4 border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">Gold Cases</div>
+              <div className="text-3xl font-black text-stone-900 mt-2">{rawCases.length}</div>
+              <div className="text-[10px] text-stone-400 mt-1 font-mono">customer_deletion_audit</div>
+            </div>
+            <div className="bg-[#FAF7F2] rounded-2xl p-4 border border-[#EFE5DB] col-span-2 sm:col-span-1">
+              <div className="text-xs font-medium text-stone-600">Gold Resources</div>
+              <div className="text-3xl font-black text-stone-900 mt-2">{rawResources.length}</div>
+              <div className="text-[10px] text-stone-400 mt-1 font-mono">resource_audit</div>
+            </div>
+          </div>
+
+          {/* Lineage & Coverage Cards Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Medallion Flow Diagram */}
+            <div className="p-5 rounded-2xl border border-[#EFE5DB] bg-white space-y-4">
+              <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-[#EA580C]" />
+                Synthetic Data Lineage (Medallion Pipeline)
+              </h3>
+              
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-[#FAF7F2] rounded-xl border border-[#EFE5DB]">
+                <div className="flex-1 text-center p-3 rounded-lg bg-amber-50 border border-amber-200">
+                  <div className="font-bold text-xs text-amber-800">Bronze Layer</div>
+                  <div className="text-[10px] text-amber-600 mt-1">Raw Evidence Files</div>
+                  <div className="text-xs font-mono font-bold mt-1">94 files</div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-stone-400 shrink-0 hidden sm:block" />
+                <div className="flex-1 text-center p-3 rounded-lg bg-slate-100 border border-slate-300">
+                  <div className="font-bold text-xs text-slate-800">Silver Layer</div>
+                  <div className="text-[10px] text-slate-600 mt-1">Clean Lakehouse DB</div>
+                  <div className="text-xs font-mono font-bold mt-1">8 Tables</div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-stone-400 shrink-0 hidden sm:block" />
+                <div className="flex-1 text-center p-3 rounded-lg bg-orange-50 border border-orange-200">
+                  <div className="font-bold text-xs text-[#EA580C]">Gold Layer</div>
+                  <div className="text-[10px] text-orange-600 mt-1">Audited Warehouse</div>
+                  <div className="text-xs font-mono font-bold mt-1">518 Cases</div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-stone-400 shrink-0 hidden sm:block" />
+                <div className="flex-1 text-center p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                  <div className="font-bold text-xs text-emerald-800">Forensics</div>
+                  <div className="text-[10px] text-emerald-600 mt-1">Predictions (output.csv)</div>
+                  <div className="text-xs font-mono font-bold mt-1">100% Valid</div>
+                </div>
+              </div>
+
+              <div className="text-xs text-stone-600 leading-relaxed font-sans">
+                Each deletion request traverses from unstructured evidence files (logs, SQL dumps, PDFs, JSONs) into structured Silver relation tables, then evaluated against deletion rules to form Gold audited state matrices.
+              </div>
             </div>
 
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => setSelectedCase(null)}
-                className="px-4 py-2 bg-stone-900 text-white rounded-xl text-xs font-bold cursor-pointer hover:bg-stone-800 transition"
-              >
-                Close Inspector
-              </button>
+            {/* Coverage Card */}
+            <div className="p-5 rounded-2xl border border-[#EFE5DB] bg-white space-y-4">
+              <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#EA580C]" />
+                Dataset Coverage & Scope
+              </h3>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-[#FAF7F2] border border-[#EFE5DB]">
+                  <span className="text-xs font-medium text-stone-700">Evidence Formats (Bronze)</span>
+                  <span className="font-mono font-bold text-xs text-[#EA580C]">6 Distinct Types</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-[#FAF7F2] border border-[#EFE5DB]">
+                  <span className="text-xs font-medium text-stone-700">Microservices Monitored (Silver)</span>
+                  <span className="font-mono font-bold text-xs text-[#EA580C]">16 Systems</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-[#FAF7F2] border border-[#EFE5DB]">
+                  <span className="text-xs font-medium text-stone-700">Gold Audit Statuses</span>
+                  <span className="font-mono font-bold text-xs text-[#EA580C]">COMPLETE, INCOMPLETE, NOT_APPLICABLE</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-[#FAF7F2] border border-[#EFE5DB]">
+                  <span className="text-xs font-medium text-stone-700">Deterministic Pass Rate</span>
+                  <span className="font-mono font-bold text-xs text-emerald-600">100% Deterministic (Python 3.13)</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* =========================================================================
-          MODAL: EXPANDED AUDIT SNAPSHOT IMAGE
+          PAGE 3: BRONZE ANALYSIS (Raw Evidence Layer Replication)
           ========================================================================= */}
-      {showImageModal && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-zoom-out"
-          onClick={() => setShowImageModal(false)}
-        >
-          <div className="relative max-w-6xl w-full p-2 bg-white rounded-3xl overflow-hidden shadow-2xl">
-            <div className="p-3 flex items-center justify-between border-b border-stone-200">
-              <span className="text-xs font-bold font-mono text-stone-700 flex items-center gap-1.5">
-                <ImageIcon className="w-4 h-4 text-[#EA580C]" />
-                Captured Enterprise Deletion Analytics Dashboard (Reference Ground Truth)
-              </span>
-              <button
-                onClick={() => setShowImageModal(false)}
-                className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center justify-center font-bold text-sm cursor-pointer"
-              >
-                &times;
-              </button>
+      {streamlitPage === 'bronze' && (
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#EFE5DB] shadow-xs space-y-6">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-6 h-6 rounded-lg bg-[#FFEAE0] text-[#D94E1B] flex items-center justify-center">
+                <Paperclip className="w-4 h-4 text-[#E06D3B]" />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-[#191D24] tracking-tight">
+                Bronze: Raw Synthetic Evidence Manifest
+              </h2>
             </div>
-            <img
-              src={analyticsScreenshot}
-              alt="Enterprise Deletion Analytics Dashboard Full Resolution"
-              className="w-full h-auto object-contain max-h-[85vh] rounded-b-2xl"
+            <p className="text-xs sm:text-sm text-[#5B6575]">
+              Full participant-facing evidence catalogue across logs, SQL relational snapshots, JSON payloads, and image artifacts.
+            </p>
+          </div>
+
+          {/* Top 3 KPI Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">Total Evidence Files</div>
+              <div className="text-3xl font-black text-stone-900 mt-2">{evidenceList.length}</div>
+              <div className="text-[10px] text-stone-400 mt-1 font-mono">94 Ground Truth Files</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">File Formats</div>
+              <div className="text-3xl font-black text-stone-900 mt-2">{bronzeFormatCounts.length}</div>
+              <div className="text-[10px] text-stone-400 mt-1 font-mono">LOG, JSON, SQL, PNG, PDF, TXT</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">Source Origins</div>
+              <div className="text-3xl font-black text-stone-900 mt-2">30</div>
+              <div className="text-[10px] text-stone-400 mt-1 font-mono">Distributed Microservices</div>
+            </div>
+          </div>
+
+          {/* Charts: Format Distribution */}
+          <div className="p-5 rounded-2xl border border-[#EFE5DB] bg-white space-y-4">
+            <h3 className="font-bold text-sm text-stone-900">Evidence Formats Breakdown</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+              {bronzeFormatCounts.map(([fmt, cnt]) => (
+                <div key={fmt} className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EFE5DB] text-center">
+                  <div className="text-xs font-bold text-stone-600">{fmt}</div>
+                  <div className="text-2xl font-black text-[#EA580C] mt-1">{cnt}</div>
+                  <div className="text-[10px] text-stone-400 mt-0.5">{((cnt / evidenceList.length) * 100).toFixed(1)}%</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Searchable Evidence Manifest Table */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h3 className="font-bold text-sm text-stone-900">
+                Evidence Files Catalogue ({filteredBronze.length} matches)
+              </h3>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <input
+                    type="text"
+                    placeholder="Search evidence ID or path..."
+                    value={bronzeSearch}
+                    onChange={(e) => setBronzeSearch(e.target.value)}
+                    className="pl-8 pr-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#EFE5DB] rounded-xl w-52"
+                  />
+                </div>
+                <select
+                  value={bronzeFormatFilter}
+                  onChange={(e) => setBronzeFormatFilter(e.target.value)}
+                  className="text-xs bg-[#FAF7F2] border border-[#EFE5DB] rounded-xl px-2.5 py-1.5 text-stone-700 cursor-pointer"
+                >
+                  <option value="ALL">All Formats</option>
+                  {bronzeFormatCounts.map(([fmt]) => (
+                    <option key={fmt} value={fmt}>{fmt}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-2xl border border-[#EFE5DB]">
+              <table className="w-full text-left text-xs font-sans">
+                <thead className="bg-[#FAF7F2] border-b border-[#EFE5DB] text-stone-600 font-semibold uppercase tracking-wider text-[10px]">
+                  <tr>
+                    <th className="py-3 px-4">File ID</th>
+                    <th className="py-3 px-4">Format</th>
+                    <th className="py-3 px-4">Origin</th>
+                    <th className="py-3 px-4">Path</th>
+                    <th className="py-3 px-4">Captured At</th>
+                    <th className="py-3 px-4">Size (Bytes)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px]">
+                  {filteredBronze.slice(0, 50).map((e) => (
+                    <tr key={e.file_id} className="hover:bg-[#FAF7F2] transition">
+                      <td className="py-3 px-4 font-bold text-stone-900">{e.file_id}</td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] font-bold">
+                          {e.format || 'UNKNOWN'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-stone-600">{e.origin}</td>
+                      <td className="py-3 px-4 text-stone-400 text-[10px] max-w-xs truncate">{e.file_path}</td>
+                      <td className="py-3 px-4 text-stone-500 text-[10px]">{e.captured_at?.split('T')[0]}</td>
+                      <td className="py-3 px-4 text-stone-600">{e.size_bytes ? e.size_bytes.toLocaleString() : 'N/A'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          PAGE 4: SILVER ANALYSIS (Clean Lakehouse Entities Replication)
+          ========================================================================= */}
+      {streamlitPage === 'silver' && (
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#EFE5DB] shadow-xs space-y-6">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-6 h-6 rounded-lg bg-[#FFEAE0] text-[#D94E1B] flex items-center justify-center">
+                <Database className="w-4 h-4 text-[#E06D3B]" />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-[#191D24] tracking-tight">
+                Silver: Cleaned Lakehouse Entities
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-[#5B6575]">
+              Normalized relational entities queryable across customers, identity change history, activities, and deletion policies.
+            </p>
+          </div>
+
+          {/* Top 4 Silver Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">Customers</div>
+              <div className="text-3xl font-black text-stone-900 mt-2">{silverWarehouseData.counts.customers}</div>
+              <div className="text-[10px] text-stone-400 mt-1 font-mono">dim_customer</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">Identity Changes</div>
+              <div className="text-3xl font-black text-stone-900 mt-2">{silverWarehouseData.counts.identity_history}</div>
+              <div className="text-[10px] text-stone-400 mt-1 font-mono">dim_identity_history</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">Activities</div>
+              <div className="text-3xl font-black text-stone-900 mt-2">{silverWarehouseData.counts.activities}</div>
+              <div className="text-[10px] text-stone-400 mt-1 font-mono">fact_activity</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">Evidence Observations</div>
+              <div className="text-3xl font-black text-stone-900 mt-2">{silverWarehouseData.counts.links}</div>
+              <div className="text-[10px] text-stone-400 mt-1 font-mono">fact_case_data_link</div>
+            </div>
+          </div>
+
+          {/* Segmented Table Selector */}
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2 border-b border-[#EFE5DB] pb-3">
+              {[
+                { id: 'requests', label: 'Requests (518)' },
+                { id: 'customers', label: 'Customers (850)' },
+                { id: 'identity_history', label: 'Identity History (306)' },
+                { id: 'policies', label: 'Deletion Policies (15)' },
+                { id: 'activities', label: 'Activities (4,011)' },
+                { id: 'links', label: 'Case Links (1,216)' },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setSilverTable(t.id as any)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition ${
+                    silverTable === t.id
+                      ? 'bg-stone-900 text-white shadow-2xs'
+                      : 'bg-[#FAF7F2] text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Table Rendering */}
+            <div className="overflow-x-auto rounded-2xl border border-[#EFE5DB]">
+              {silverTable === 'requests' && (
+                <table className="w-full text-left text-xs font-sans">
+                  <thead className="bg-[#FAF7F2] border-b border-[#EFE5DB] text-stone-600 font-semibold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">Case ID</th>
+                      <th className="py-3 px-4">Customer ID</th>
+                      <th className="py-3 px-4">Email</th>
+                      <th className="py-3 px-4">Reported Status</th>
+                      <th className="py-3 px-4">Requested At</th>
+                      <th className="py-3 px-4">Audit Cutoff</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px]">
+                    {silverWarehouseData.fact_deletion_request.slice(0, 30).map((r: any) => (
+                      <tr key={r.case_id} className="hover:bg-[#FAF7F2]">
+                        <td className="py-3 px-4 font-bold text-stone-900">{r.case_id}</td>
+                        <td className="py-3 px-4 text-stone-600">{r.customer_id}</td>
+                        <td className="py-3 px-4 text-stone-500">{r.email}</td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-stone-100 text-stone-800">
+                            {r.reported_status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-stone-400">{r.requested_at?.split('T')[0]}</td>
+                        <td className="py-3 px-4 text-stone-400">{r.audit_at?.split('T')[0]}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {silverTable === 'customers' && (
+                <table className="w-full text-left text-xs font-sans">
+                  <thead className="bg-[#FAF7F2] border-b border-[#EFE5DB] text-stone-600 font-semibold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">Customer ID</th>
+                      <th className="py-3 px-4">Name</th>
+                      <th className="py-3 px-4">Email</th>
+                      <th className="py-3 px-4">Phone</th>
+                      <th className="py-3 px-4">Last Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px]">
+                    {silverWarehouseData.dim_customer.slice(0, 30).map((c: any) => (
+                      <tr key={c.customer_id} className="hover:bg-[#FAF7F2]">
+                        <td className="py-3 px-4 font-bold text-stone-900">{c.customer_id}</td>
+                        <td className="py-3 px-4 text-stone-800 font-sans">{c.name}</td>
+                        <td className="py-3 px-4 text-stone-600">{c.email}</td>
+                        <td className="py-3 px-4 text-stone-500">{c.phone}</td>
+                        <td className="py-3 px-4 text-stone-400">{c.current_updated_at?.split('T')[0]}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {silverTable === 'policies' && (
+                <table className="w-full text-left text-xs font-sans">
+                  <thead className="bg-[#FAF7F2] border-b border-[#EFE5DB] text-stone-600 font-semibold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">Policy ID</th>
+                      <th className="py-3 px-4">Resource Type</th>
+                      <th className="py-3 px-4">Required Action</th>
+                      <th className="py-3 px-4">Retention Period</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px]">
+                    {silverWarehouseData.dim_deletion_policy.map((p: any) => (
+                      <tr key={p.policy_id} className="hover:bg-[#FAF7F2]">
+                        <td className="py-3 px-4 font-bold text-[#EA580C]">{p.policy_id}</td>
+                        <td className="py-3 px-4 text-stone-800">{p.resource_type}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            p.action_required === 'DELETE' ? 'bg-rose-100 text-rose-800' :
+                            p.action_required === 'REDACT' ? 'bg-amber-100 text-amber-800' :
+                            p.action_required === 'ANONYMIZE' ? 'bg-purple-100 text-purple-800' :
+                            'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {p.action_required}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-stone-600">{p.retention_period}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {silverTable === 'activities' && (
+                <table className="w-full text-left text-xs font-sans">
+                  <thead className="bg-[#FAF7F2] border-b border-[#EFE5DB] text-stone-600 font-semibold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">Activity ID</th>
+                      <th className="py-3 px-4">System ID</th>
+                      <th className="py-3 px-4">Action</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4">Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px]">
+                    {silverWarehouseData.fact_activity.slice(0, 30).map((a: any) => (
+                      <tr key={a.activity_id} className="hover:bg-[#FAF7F2]">
+                        <td className="py-3 px-4 font-bold text-stone-900">{a.activity_id}</td>
+                        <td className="py-3 px-4 text-stone-700">{a.system_id}</td>
+                        <td className="py-3 px-4 text-stone-600">{a.action_type || a.action}</td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-stone-100 text-stone-800">
+                            {a.status || 'LOGGED'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-stone-400">{a.occurred_at?.split('T')[0] || a.timestamp?.split('T')[0]}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {silverTable === 'identity_history' && (
+                <table className="w-full text-left text-xs font-sans">
+                  <thead className="bg-[#FAF7F2] border-b border-[#EFE5DB] text-stone-600 font-semibold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">User ID</th>
+                      <th className="py-3 px-4">Field Changed</th>
+                      <th className="py-3 px-4">Old Value</th>
+                      <th className="py-3 px-4">New Value</th>
+                      <th className="py-3 px-4">Changed At</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px]">
+                    {silverWarehouseData.dim_identity_history.slice(0, 30).map((h: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-[#FAF7F2]">
+                        <td className="py-3 px-4 font-bold text-stone-900">{h.user_id || h.customer_id}</td>
+                        <td className="py-3 px-4 text-[#EA580C] font-semibold">{h.field_name || h.field}</td>
+                        <td className="py-3 px-4 text-stone-500">{h.old_value || 'None'}</td>
+                        <td className="py-3 px-4 text-stone-800">{h.new_value}</td>
+                        <td className="py-3 px-4 text-stone-400">{h.changed_at?.split('T')[0]}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {silverTable === 'links' && (
+                <table className="w-full text-left text-xs font-sans">
+                  <thead className="bg-[#FAF7F2] border-b border-[#EFE5DB] text-stone-600 font-semibold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">Case ID</th>
+                      <th className="py-3 px-4">Resource ID</th>
+                      <th className="py-3 px-4">Evidence ID</th>
+                      <th className="py-3 px-4">System ID</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px]">
+                    {silverWarehouseData.fact_case_data_link.slice(0, 30).map((l: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-[#FAF7F2]">
+                        <td className="py-3 px-4 font-bold text-stone-900">{l.case_id}</td>
+                        <td className="py-3 px-4 text-stone-700">{l.resource_id}</td>
+                        <td className="py-3 px-4 text-[#EA580C] font-semibold">{l.evidence_id}</td>
+                        <td className="py-3 px-4 text-stone-500">{l.system_id}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          PAGE 5: GOLD ANALYSIS (Warehouse Audit Outcomes Replication)
+          ========================================================================= */}
+      {streamlitPage === 'gold' && (
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#EFE5DB] shadow-xs space-y-6">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-6 h-6 rounded-lg bg-[#FFEAE0] text-[#D94E1B] flex items-center justify-center">
+                <FileSpreadsheet className="w-4 h-4 text-[#E06D3B]" />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-[#191D24] tracking-tight">
+                Gold: Synthetic Warehouse Outcomes
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-[#5B6575]">
+              Final audited warehouse records verifying case-level and resource-level deletion outcomes at audit cutoff times.
+            </p>
+          </div>
+
+          {/* Top 5 Gold KPI Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">Gold Cases</div>
+              <div className="text-3xl font-black text-stone-900 mt-2">{rawCases.length}</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">Complete</div>
+              <div className="text-3xl font-black text-emerald-600 mt-2">47</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">Incomplete</div>
+              <div className="text-3xl font-black text-sky-600 mt-2">462</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB]">
+              <div className="text-xs font-medium text-stone-600">Not Applicable</div>
+              <div className="text-3xl font-black text-stone-500 mt-2">9</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB] col-span-2 sm:col-span-1">
+              <div className="text-xs font-medium text-stone-600">Gold Resources</div>
+              <div className="text-3xl font-black text-stone-900 mt-2">{rawResources.length}</div>
+            </div>
+          </div>
+
+          {/* Status Breakdown Bar */}
+          <div className="p-5 rounded-2xl border border-[#EFE5DB] bg-white space-y-3">
+            <h3 className="font-bold text-sm text-stone-900">Warehouse Overall Status Distribution</h3>
+            <div className="w-full bg-stone-100 rounded-2xl h-4 overflow-hidden flex">
+              <div 
+                className="bg-sky-500 h-full"
+                style={{ width: `${(462 / 518) * 100}%` }}
+                title="INCOMPLETE: 462 cases (89.2%)"
+              ></div>
+              <div 
+                className="bg-[#EA580C] h-full"
+                style={{ width: `${(47 / 518) * 100}%` }}
+                title="COMPLETE: 47 cases (9.1%)"
+              ></div>
+              <div 
+                className="bg-stone-400 h-full"
+                style={{ width: `${(9 / 518) * 100}%` }}
+                title="NOT_APPLICABLE: 9 cases (1.7%)"
+              ></div>
+            </div>
+            <div className="flex items-center justify-between text-xs font-mono pt-1 text-stone-500">
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-sky-500 rounded-xs"></span> INCOMPLETE: 462 (89.2%)</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-[#EA580C] rounded-xs"></span> COMPLETE: 47 (9.1%)</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-stone-400 rounded-xs"></span> NOT_APPLICABLE: 9 (1.7%)</span>
+            </div>
+          </div>
+
+          {/* Search Gold Details Controls */}
+          <div className="p-5 rounded-2xl border border-[#EFE5DB] bg-[#FAF7F2] space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider font-mono">
+                Search Gold Warehouse Details
+              </h4>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setGoldView('cases')}
+                  className={`px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer ${
+                    goldView === 'cases' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 border border-[#EFE5DB]'
+                  }`}
+                >
+                  Cases ({filteredGoldCases.length})
+                </button>
+                <button
+                  onClick={() => setGoldView('resources')}
+                  className={`px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer ${
+                    goldView === 'resources' ? 'bg-stone-900 text-white' : 'bg-white text-stone-600 border border-[#EFE5DB]'
+                  }`}
+                >
+                  Resources ({filteredGoldResources.length})
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <input
+                type="text"
+                placeholder="Search Case ID (e.g. case_100)..."
+                value={goldSearchCase}
+                onChange={(e) => setGoldSearchCase(e.target.value)}
+                className="px-3 py-2 text-xs bg-white border border-[#EFE5DB] rounded-xl"
+              />
+              <input
+                type="text"
+                placeholder="Search Customer ID (e.g. user_98)..."
+                value={goldSearchUser}
+                onChange={(e) => setGoldSearchUser(e.target.value)}
+                className="px-3 py-2 text-xs bg-white border border-[#EFE5DB] rounded-xl"
+              />
+              <input
+                type="text"
+                placeholder="Search Resource ID..."
+                value={goldSearchResource}
+                onChange={(e) => setGoldSearchResource(e.target.value)}
+                className="px-3 py-2 text-xs bg-white border border-[#EFE5DB] rounded-xl"
+              />
+              <select
+                value={goldSearchStatus}
+                onChange={(e) => setGoldSearchStatus(e.target.value)}
+                className="px-3 py-2 text-xs bg-white border border-[#EFE5DB] rounded-xl cursor-pointer"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="COMPLETE">COMPLETE</option>
+                <option value="INCOMPLETE">INCOMPLETE</option>
+                <option value="NOT_APPLICABLE">NOT_APPLICABLE</option>
+                <option value="DELETED">DELETED</option>
+                <option value="PRESENT">PRESENT</option>
+                <option value="REDACTED">REDACTED</option>
+                <option value="ANONYMIZED">ANONYMIZED</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Gold Table View */}
+          <div className="overflow-x-auto rounded-2xl border border-[#EFE5DB]">
+            {goldView === 'cases' ? (
+              <table className="w-full text-left text-xs font-sans">
+                <thead className="bg-[#FAF7F2] border-b border-[#EFE5DB] text-stone-600 font-semibold uppercase tracking-wider text-[10px]">
+                  <tr>
+                    <th className="py-3 px-4">Case ID</th>
+                    <th className="py-3 px-4">Customer ID</th>
+                    <th className="py-3 px-4">Overall Status</th>
+                    <th className="py-3 px-4">Deleted Res</th>
+                    <th className="py-3 px-4">Total Res</th>
+                    <th className="py-3 px-4">Completion</th>
+                    <th className="py-3 px-4">Audit Cutoff</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px]">
+                  {filteredGoldCases.slice(0, 30).map((c) => (
+                    <tr key={c.case_id} className="hover:bg-[#FAF7F2]">
+                      <td className="py-3 px-4 font-bold text-stone-900">{c.case_id}</td>
+                      <td className="py-3 px-4 text-stone-600">{c.customer_id}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          c.overall_deletion_status === 'COMPLETE' ? 'bg-emerald-100 text-emerald-800' :
+                          c.overall_deletion_status === 'INCOMPLETE' ? 'bg-sky-100 text-sky-800' :
+                          'bg-stone-200 text-stone-800'
+                        }`}>
+                          {c.overall_deletion_status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-stone-700">{c.deleted_resource_count}</td>
+                      <td className="py-3 px-4 text-stone-700">{c.total_resource_count}</td>
+                      <td className="py-3 px-4 font-bold text-[#EA580C]">{c.completion_percentage}%</td>
+                      <td className="py-3 px-4 text-stone-400">{c.audit_cutoff.split('T')[0]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full text-left text-xs font-sans">
+                <thead className="bg-[#FAF7F2] border-b border-[#EFE5DB] text-stone-600 font-semibold uppercase tracking-wider text-[10px]">
+                  <tr>
+                    <th className="py-3 px-4">Resource ID</th>
+                    <th className="py-3 px-4">Case ID</th>
+                    <th className="py-3 px-4">Customer ID</th>
+                    <th className="py-3 px-4">System ID</th>
+                    <th className="py-3 px-4">Resource Type</th>
+                    <th className="py-3 px-4">Verified State</th>
+                    <th className="py-3 px-4">Policy Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px]">
+                  {filteredGoldResources.slice(0, 30).map((r) => (
+                    <tr key={r.resource_id} className="hover:bg-[#FAF7F2]">
+                      <td className="py-3 px-4 font-bold text-stone-900">{r.resource_id}</td>
+                      <td className="py-3 px-4 text-stone-600">{r.case_id}</td>
+                      <td className="py-3 px-4 text-stone-500">{r.customer_id}</td>
+                      <td className="py-3 px-4 text-stone-700">{r.system_id}</td>
+                      <td className="py-3 px-4 text-stone-600">{r.resource_type}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          r.verified_state === 'DELETED' ? 'bg-emerald-100 text-emerald-800' :
+                          'bg-amber-100 text-amber-800'
+                        }`}>
+                          {r.verified_state}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-stone-500">{r.policy_action}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          PAGE 6: LIVE EMBEDDED STREAMLIT DASHBOARD (Port 8502)
+          ========================================================================= */}
+      {streamlitPage === 'live' && (
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#EFE5DB] shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#EFE5DB]">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                <h3 className="text-lg font-extrabold text-stone-900 tracking-tight">
+                  Live Streamlit Dashboard Engine
+                </h3>
+                <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
+                  Active on http://localhost:8502
+                </span>
+              </div>
+              <p className="text-xs text-stone-500">
+                Direct interactive view of <code className="text-stone-700 bg-stone-100 px-1 py-0.5 rounded font-mono">app/app.py</code> running with full Plotly chart interactivity, faceted controls, and live table exports.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <a
+                href="http://localhost:8502"
+                target="_blank"
+                rel="noreferrer"
+                className="px-3.5 py-2 bg-[#EA580C] hover:bg-[#D94E1B] text-white text-xs font-bold rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Open Standalone Tab
+              </a>
+            </div>
+          </div>
+
+          {/* Embedded Streamlit Frame */}
+          <div className="relative w-full rounded-2xl border border-[#EFE5DB] overflow-hidden bg-stone-50 shadow-inner h-[820px]">
+            <iframe
+              src="http://localhost:8502/?embed=true"
+              title="Streamlit Forensic Audit Warehouse Dashboard"
+              className="w-full h-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
             />
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] font-mono text-stone-400 pt-2">
+            <span>Powered by Streamlit 1.66.1 &bull; SQLite readonly connection</span>
+            <span>Refreshes automatically upon data changes</span>
           </div>
         </div>
       )}
