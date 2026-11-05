@@ -25,7 +25,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'how-it-works', label: 'How It Works' },
     { id: 'architecture', label: 'Architecture' },
     { id: 'use-cases', label: 'Use Cases' },
-    { id: 'research', label: 'Research' },
     { id: 'docs', label: 'Docs' },
   ];
 
@@ -48,9 +47,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span className="w-2 h-2 rounded-full bg-[#EA580C]"></span>
           <span className="text-base font-extrabold tracking-tight text-stone-900 group-hover:text-[#EA580C] transition-colors">
             AEGIS
-          </span>
-          <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200/80 hidden sm:inline-block">
-            v3.0 &bull; Forensic
           </span>
         </div>
 

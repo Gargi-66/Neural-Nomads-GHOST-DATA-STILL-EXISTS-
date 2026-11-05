@@ -23,11 +23,11 @@ export const ArchitectureSection: React.FC = () => {
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-[#5B6575]">
-            Data Transformation (Bronze &rarr; Silver &rarr; Gold) coupled with Streamlit Dashboard &amp; Gemini RAG.
+            Data Transformation (Bronze &rarr; Silver &rarr; Gold) coupled with automated deletion-audit and forensic verification.
           </p>
         </div>
 
-        {/* View Mode Switcher */}
+        {/* View Mode Switcher: Medallion Pipeline vs Pipeline Flow */}
         <div className="inline-flex items-center p-1 rounded-full bg-stone-100 border border-stone-200 text-xs">
           <button
             onClick={() => setViewMode('medallion')}
@@ -38,7 +38,7 @@ export const ArchitectureSection: React.FC = () => {
             }`}
           >
             <Layers className="w-3 h-3 text-[#EA580C]" />
-            <span>Medallion Warehouse</span>
+            <span>Medallion Pipeline</span>
           </button>
 
           <button

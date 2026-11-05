@@ -213,7 +213,7 @@ export function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#EA580C]"></span>
-            <span className="font-bold text-stone-900">AEGIS 3.0</span>
+            <span className="font-bold text-stone-900">AEGIS</span>
             <span>&bull; HackerRank Orchestrate: Ghost Data Still Exists</span>
           </div>
           <div className="flex items-center gap-4 text-[11px] font-mono">
