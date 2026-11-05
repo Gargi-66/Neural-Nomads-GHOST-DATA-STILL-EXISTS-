@@ -1,45 +1,47 @@
 import React, { useState } from 'react';
 import { 
-  GitBranch, Database, HardDrive, FileSpreadsheet, Layers, 
-  CheckCheck, Fingerprint, Link2, ShieldCheck, Scale, BarChart2, 
-  CheckCircle2, Search, FileText, Sparkles, Bot, LayoutDashboard, 
-  Sliders, ArrowDown, ArrowRight, CornerDownRight, CornerRightDown
+  FileSpreadsheet, HardDrive, Layers, CheckCheck, Fingerprint, 
+  Link2, Database, ShieldCheck, Scale, BarChart2, CheckCircle2, 
+  Search, FileText, Sparkles, Bot, LayoutDashboard, Sliders,
+  ArrowDown, ArrowRight, CornerDownRight, CornerRightDown,
+  GitBranch, ChevronRight, Activity, Cpu
 } from 'lucide-react';
-import allCases from '../data/all_cases.json';
-
-interface DAGNode {
-  id: string;
-  stepNo: number;
-  title: string;
-  subtitle: string;
-  layer: 'Bronze' | 'Silver' | 'Gold' | 'RAG / AI' | 'Dashboard';
-  color: string;
-  badgeBg: string;
-  badgeText: string;
-  icon: React.ElementType;
-  inputs: string;
-  outputs: string;
-  desc: string;
-  branchesTo?: string[];
-  branchesFrom?: string[];
-}
 
 interface DAGProps {
   initialCaseId?: string;
   onSelectCase?: (caseId: string) => void;
 }
 
-export const InteractiveRelationshipGraph: React.FC<DAGProps> = ({
-  initialCaseId = 'case_09',
-  onSelectCase
-}) => {
-  const [dagViewMode, setDagViewMode] = useState<'pipeline_dag' | 'case_schedule'>('pipeline_dag');
-  const [selectedNodeId, setSelectedNodeId] = useState<string>('silver_db');
-  const [selectedCaseId, setSelectedCaseId] = useState<string>(initialCaseId);
-  const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null);
+interface DAGNode {
+  id: string;
+  stepNo: number;
+  title: string;
+  subtitle?: string;
+  layer: 'Bronze' | 'Silver' | 'Gold' | 'RAG / AI' | 'Dashboard';
+  icon: React.ElementType;
+  badge: string;
+  // Color styling matching website aesthetic
+  cardBg: string;
+  cardBorder: string;
+  cardHover: string;
+  textColor: string;
+  subtitleColor: string;
+  iconBg: string;
+  iconColor: string;
+  badgeBg: string;
+  badgeText: string;
+  gradientTop?: string;
+  // Forensic Architecture Details
+  inputs: string;
+  outputs: string;
+  description: string;
+  keyFunctions: string[];
+  branchesOutTo?: string[];
+  branchesInFrom?: string[];
+}
 
-  const currentCase = allCases.find((c) => c.case_id === selectedCaseId) || allCases[0];
-  const steps = currentCase.steps || [];
+export const InteractiveRelationshipGraph: React.FC<DAGProps> = () => {
+  const [selectedNodeId, setSelectedNodeId] = useState<string>('silver_db');
 
   const nodes: DAGNode[] = [
     {
@@ -48,14 +50,22 @@ export const InteractiveRelationshipGraph: React.FC<DAGProps> = ({
       title: 'Raw Data Sources',
       subtitle: 'CSV, Images, PDFs, Logs',
       layer: 'Bronze',
-      color: 'blue',
-      badgeBg: 'bg-blue-50',
-      badgeText: 'text-blue-700',
       icon: FileSpreadsheet,
-      inputs: '518 deletion requests, 94 evidence files, SQL database dumps, event streams',
-      outputs: 'Unstructured and semi-structured evidence artifacts',
-      desc: 'Heterogeneous input collection from 18 platform microservices and external participant artifacts.',
-      branchesTo: ['bronze_layer']
+      badge: 'RAW INGESTION',
+      cardBg: 'bg-white',
+      cardBorder: 'border-stone-200/90',
+      cardHover: 'hover:border-stone-400 hover:shadow-sm',
+      textColor: 'text-stone-900',
+      subtitleColor: 'text-stone-500',
+      iconBg: 'bg-stone-100',
+      iconColor: 'text-stone-700',
+      badgeBg: 'bg-stone-100',
+      badgeText: 'text-stone-700',
+      gradientTop: 'from-stone-400 to-stone-500',
+      inputs: '518 deletion requests, 94 evidence files, SQL database dumps, event streams, support PDFs',
+      outputs: 'Unstructured and semi-structured evidence artifacts staged in storage buffer',
+      description: 'Heterogeneous input collection from 18 platform microservices and external participant evidence artifacts.',
+      keyFunctions: ['Evidence manifest indexing', 'Multi-format file discovery', 'Provenance logging']
     },
     {
       id: 'bronze_layer',
@@ -63,14 +73,22 @@ export const InteractiveRelationshipGraph: React.FC<DAGProps> = ({
       title: 'Bronze Layer',
       subtitle: 'Raw Storage + Metadata + SHA-256',
       layer: 'Bronze',
-      color: 'blue',
-      badgeBg: 'bg-blue-50',
-      badgeText: 'text-blue-700',
       icon: HardDrive,
-      inputs: 'Raw participant datasets from dataset/',
-      outputs: 'Immutable raw store with SHA-256 cryptographic verification hashes',
-      desc: 'Raw staging layer that preserves source provenance, file metadata, and tamper-proof checksums.',
-      branchesTo: ['silver_ingestion']
+      badge: 'BRONZE LAKE',
+      cardBg: 'bg-[#FDF9F5]',
+      cardBorder: 'border-[#EAD5C3]',
+      cardHover: 'hover:border-[#C48858] hover:shadow-sm',
+      textColor: 'text-[#6E3C1B]',
+      subtitleColor: 'text-[#A06138]',
+      iconBg: 'bg-[#FBE9DC]',
+      iconColor: 'text-[#B45309]',
+      badgeBg: 'bg-[#FBE9DC]',
+      badgeText: 'text-[#9A3412]',
+      gradientTop: 'from-[#B45309] to-[#D97706]',
+      inputs: 'Raw files from dataset/ directory and microservice streams',
+      outputs: 'Immutable Bronze lakehouse with cryptographic SHA-256 verification hashes',
+      description: 'Preserves raw data untouched for audit compliance, stamping each artifact with tamper-proof checksums and ingestion timestamps.',
+      keyFunctions: ['SHA-256 cryptographic hashing', 'Metadata extraction', 'Temporal boundary enforcement']
     },
     {
       id: 'silver_ingestion',
@@ -78,14 +96,22 @@ export const InteractiveRelationshipGraph: React.FC<DAGProps> = ({
       title: 'Silver Ingestion',
       subtitle: 'Stream & Batch Normalization',
       layer: 'Silver',
-      color: 'purple',
-      badgeBg: 'bg-purple-50',
-      badgeText: 'text-purple-700',
       icon: Layers,
+      badge: 'SILVER STAGING',
+      cardBg: 'bg-[#F8FAFC]',
+      cardBorder: 'border-[#CBD5E1]',
+      cardHover: 'hover:border-[#94A3B8] hover:shadow-sm',
+      textColor: 'text-[#1E293B]',
+      subtitleColor: 'text-[#64748B]',
+      iconBg: 'bg-[#E2E8F0]',
+      iconColor: 'text-[#475569]',
+      badgeBg: 'bg-[#E2E8F0]',
+      badgeText: 'text-[#334155]',
+      gradientTop: 'from-[#64748B] to-[#94A3B8]',
       inputs: 'Bronze storage blobs and SQLite database snapshots',
-      outputs: 'Structured tabular record streams',
-      desc: 'Extracts relational schemas, parses event JSON payloads, and stages records into typed buffers.',
-      branchesTo: ['data_cleaning']
+      outputs: 'Structured tabular record streams in typed memory buffers',
+      description: 'Extracts relational schemas, parses event JSON payloads, and stages records into typed, queryable buffers.',
+      keyFunctions: ['JSON payload unnesting', 'SQLite schema inspection', 'Type coercion']
     },
     {
       id: 'data_cleaning',
@@ -93,29 +119,45 @@ export const InteractiveRelationshipGraph: React.FC<DAGProps> = ({
       title: 'Data Cleaning & Validation',
       subtitle: 'Temporal Cutoff & Deduplication',
       layer: 'Silver',
-      color: 'purple',
-      badgeBg: 'bg-purple-50',
-      badgeText: 'text-purple-700',
       icon: CheckCheck,
+      badge: 'SILVER ETL',
+      cardBg: 'bg-[#F8FAFC]',
+      cardBorder: 'border-[#CBD5E1]',
+      cardHover: 'hover:border-[#94A3B8] hover:shadow-sm',
+      textColor: 'text-[#1E293B]',
+      subtitleColor: 'text-[#64748B]',
+      iconBg: 'bg-[#E2E8F0]',
+      iconColor: 'text-[#475569]',
+      badgeBg: 'bg-[#E2E8F0]',
+      badgeText: 'text-[#334155]',
+      gradientTop: 'from-[#64748B] to-[#94A3B8]',
       inputs: 'Structured tabular record streams + case audit_cutoff timestamps',
       outputs: 'Temporally-admissible, deduplicated relational records',
-      desc: 'Enforces strict admissibility rules: discards evidence without valid timestamps or captured after audit cutoff.',
-      branchesTo: ['identity_res']
+      description: 'Enforces strict admissibility rules: discards evidence without valid timestamps or captured after audit cutoff to prevent hindsight bias.',
+      keyFunctions: ['Cutoff timestamp filtering', 'Duplicate row elimination', 'Foreign key validation']
     },
     {
       id: 'identity_res',
       stepNo: 5,
       title: 'Identity Resolution',
-      subtitle: 'Alias Recovery & Hash Matching',
+      subtitle: 'Historical Alias & Hash Correlation',
       layer: 'Silver',
-      color: 'purple',
-      badgeBg: 'bg-purple-50',
-      badgeText: 'text-purple-700',
       icon: Fingerprint,
-      inputs: 'dim_customer current snapshot & dim_identity_history audit changelogs',
-      outputs: 'Unified identity graph with historical email aliases and SHA-256 hashes',
-      desc: 'Correlates request email against current and historical identities to uncover all pseudonyms and accounts.',
-      branchesTo: ['resource_linking']
+      badge: 'IDENTITY GRAPH',
+      cardBg: 'bg-[#F8FAFC]',
+      cardBorder: 'border-[#CBD5E1]',
+      cardHover: 'hover:border-[#94A3B8] hover:shadow-sm',
+      textColor: 'text-[#1E293B]',
+      subtitleColor: 'text-[#64748B]',
+      iconBg: 'bg-[#E2E8F0]',
+      iconColor: 'text-[#475569]',
+      badgeBg: 'bg-[#E2E8F0]',
+      badgeText: 'text-[#334155]',
+      gradientTop: 'from-[#64748B] to-[#94A3B8]',
+      inputs: 'dim_customer current snapshot & fact_customer_audit_log history',
+      outputs: 'Unified customer identity cluster with historical emails, phone numbers, and hashes',
+      description: 'Correlates the request email against all historical identity modifications to uncover every pseudonym, alias, or merged account.',
+      keyFunctions: ['Historical email lookup', 'Phone & hash resolution', 'Stable user_id linkage']
     },
     {
       id: 'resource_linking',
@@ -123,14 +165,22 @@ export const InteractiveRelationshipGraph: React.FC<DAGProps> = ({
       title: 'Resource & Evidence Linking',
       subtitle: 'Scoped fact_case_data_link Mapping',
       layer: 'Silver',
-      color: 'purple',
-      badgeBg: 'bg-purple-50',
-      badgeText: 'text-purple-700',
       icon: Link2,
-      inputs: 'Verified customer IDs, fact_resource, fact_evidence, fact_activity',
-      outputs: 'Grounded relational linkages scoping each resource strictly to its case',
-      desc: 'Uses fact_case_data_link to prevent accidental customer-level resource duplication across cases.',
-      branchesTo: ['silver_db']
+      badge: 'CASE SCOPING',
+      cardBg: 'bg-[#F8FAFC]',
+      cardBorder: 'border-[#CBD5E1]',
+      cardHover: 'hover:border-[#94A3B8] hover:shadow-sm',
+      textColor: 'text-[#1E293B]',
+      subtitleColor: 'text-[#64748B]',
+      iconBg: 'bg-[#E2E8F0]',
+      iconColor: 'text-[#475569]',
+      badgeBg: 'bg-[#E2E8F0]',
+      badgeText: 'text-[#334155]',
+      gradientTop: 'from-[#64748B] to-[#94A3B8]',
+      inputs: 'Customer identities, system activities, evidence files, and deletion rules',
+      outputs: 'Grounded relational linkages strictly scoping each resource to its case',
+      description: 'Uses fact_case_data_link to prevent accidental customer-level resource duplication across cases and isolate case boundaries.',
+      keyFunctions: ['Strict case-resource scoping', 'Multi-source cross-referencing', 'Evidence grounding']
     },
     {
       id: 'silver_db',
@@ -138,14 +188,23 @@ export const InteractiveRelationshipGraph: React.FC<DAGProps> = ({
       title: 'Silver Database',
       subtitle: '8 Validated Entities',
       layer: 'Silver',
-      color: 'purple',
-      badgeBg: 'bg-purple-50',
-      badgeText: 'text-purple-700',
       icon: Database,
-      inputs: 'Fully conformed and relational linked datasets',
+      badge: '8 CORE TABLES',
+      cardBg: 'bg-[#F1F5F9]',
+      cardBorder: 'border-[#94A3B8]',
+      cardHover: 'hover:border-slate-600 hover:shadow-md',
+      textColor: 'text-[#0F172A]',
+      subtitleColor: 'text-[#475569]',
+      iconBg: 'bg-[#CBD5E1]',
+      iconColor: 'text-[#0F172A]',
+      badgeBg: 'bg-[#CBD5E1]',
+      badgeText: 'text-[#0F172A]',
+      gradientTop: 'from-slate-600 via-slate-500 to-slate-700',
+      branchesOutTo: ['gold_layer', 'rag_retrieval'],
+      inputs: 'Fully conformed and relationally linked datasets',
       outputs: 'Normalized SQLite warehouse: silver_database.db',
-      desc: 'Houses 8 relational entities: fact_deletion_request, dim_customer, dim_identity_history, fact_resource, fact_activity, fact_evidence, dim_deletion_policy, fact_case_data_link.',
-      branchesTo: ['gold_layer', 'rag_retrieval']
+      description: 'Houses 8 normalized entities: dim_customer, fact_deletion_request, fact_customer_audit_log, fact_system_activity, fact_case_data_link, dim_deletion_rule, dim_evidence_file, fact_resource_evidence_observation.',
+      keyFunctions: ['3NF relational normalization', 'Integrity constraints', 'Direct feed to RAG Context']
     },
     {
       id: 'gold_layer',
@@ -153,29 +212,45 @@ export const InteractiveRelationshipGraph: React.FC<DAGProps> = ({
       title: 'Gold Layer',
       subtitle: 'Read-only Analytics',
       layer: 'Gold',
-      color: 'amber',
-      badgeBg: 'bg-amber-50',
-      badgeText: 'text-amber-800',
       icon: ShieldCheck,
-      inputs: 'Read-only connection to Silver database tables',
-      outputs: 'Analytical audit fact tables and classification state buffers',
-      desc: 'Deterministic warehouse builder applying zero-trust verification rules without mutating Silver records.',
-      branchesTo: ['audit_class']
+      badge: 'GOLD MART',
+      cardBg: 'bg-[#FEFCE8]',
+      cardBorder: 'border-[#FDE047]',
+      cardHover: 'hover:border-[#EAB308] hover:shadow-sm',
+      textColor: 'text-[#713F12]',
+      subtitleColor: 'text-[#A16207]',
+      iconBg: 'bg-[#FEF08A]',
+      iconColor: 'text-[#CA8A04]',
+      badgeBg: 'bg-[#FEF08A]',
+      badgeText: 'text-[#854D0E]',
+      gradientTop: 'from-[#EAB308] to-[#CA8A04]',
+      inputs: 'Read-only connection to normalized Silver tables',
+      outputs: 'Curated analytical data models and audit cubes',
+      description: 'Aggregates multi-source evidence into high-performance views for forensic classification without modifying source data.',
+      keyFunctions: ['Analytical aggregation', 'Cross-table join cubes', 'Read-only integrity']
     },
     {
       id: 'audit_class',
       stepNo: 9,
       title: 'Audit Classification',
-      subtitle: 'Temporal Admissibility & Conflict Logic',
+      subtitle: 'Policy & Authorization Evaluator',
       layer: 'Gold',
-      color: 'amber',
-      badgeBg: 'bg-amber-50',
-      badgeText: 'text-amber-800',
       icon: Scale,
-      inputs: 'Scoped case resources, activity logs, evidence timestamps, dim_deletion_policy',
-      outputs: 'Verified resource states (DELETED, ANONYMIZED, ARCHIVED, RETAINED, INCOMPLETE, UNVERIFIED)',
-      desc: 'Resolves conflicting observations chronologically; enforces policy rules (DELETE, REDACT, ANONYMIZE, RETAIN).',
-      branchesTo: ['completion_metrics']
+      badge: 'POLICY EVAL',
+      cardBg: 'bg-[#FEFCE8]',
+      cardBorder: 'border-[#FDE047]',
+      cardHover: 'hover:border-[#EAB308] hover:shadow-sm',
+      textColor: 'text-[#713F12]',
+      subtitleColor: 'text-[#A16207]',
+      iconBg: 'bg-[#FEF08A]',
+      iconColor: 'text-[#CA8A04]',
+      badgeBg: 'bg-[#FEF08A]',
+      badgeText: 'text-[#854D0E]',
+      gradientTop: 'from-[#EAB308] to-[#CA8A04]',
+      inputs: 'request_text semantic analysis + dim_deletion_rule statutory rules',
+      outputs: 'Case authorization verdict: DELETION_AUTHORIZED vs NOT_APPLICABLE',
+      description: 'Determines whether request actually authorizes deletion or is merely a GDPR access, correction, or marketing opt-out inquiry.',
+      keyFunctions: ['Multilingual text parsing', 'Statutory retention checks', 'Tombstone rule matching']
     },
     {
       id: 'completion_metrics',
@@ -183,106 +258,164 @@ export const InteractiveRelationshipGraph: React.FC<DAGProps> = ({
       title: 'Completion Metrics',
       subtitle: 'Complete / Partial / Incomplete / Pending',
       layer: 'Gold',
-      color: 'amber',
-      badgeBg: 'bg-amber-50',
-      badgeText: 'text-amber-800',
       icon: BarChart2,
-      inputs: 'Classified resource states & linguistic request authorization check',
-      outputs: 'Case-level status determination & completion percentages',
-      desc: 'Evaluates overall case compliance, isolating active violations, unverified claims, and partial completions.',
-      branchesTo: ['gold_outputs']
+      badge: 'STATUS MATRIX',
+      cardBg: 'bg-[#FEFCE8]',
+      cardBorder: 'border-[#FDE047]',
+      cardHover: 'hover:border-[#EAB308] hover:shadow-sm',
+      textColor: 'text-[#713F12]',
+      subtitleColor: 'text-[#A16207]',
+      iconBg: 'bg-[#FEF08A]',
+      iconColor: 'text-[#CA8A04]',
+      badgeBg: 'bg-[#FEF08A]',
+      badgeText: 'text-[#854D0E]',
+      gradientTop: 'from-[#EAB308] to-[#CA8A04]',
+      inputs: 'Residual evidence status across databases, replicas, backups, and logs',
+      outputs: 'Dual-perspective classifications: Benchmark status & Forensic violation counts',
+      description: 'Establishes state at audit_at cutoff: catches lingering ghost records, failover replication lag, and active restore risks.',
+      keyFunctions: ['Four-tier status determination', 'Residual count aggregation', 'Dual-perspective sync']
     },
     {
       id: 'gold_outputs',
       stepNo: 11,
       title: 'Gold Analytical Outputs',
-      subtitle: 'customer_deletion_audit & resource_audit',
+      subtitle: 'Final Verdicts & Topological Schedules',
       layer: 'Gold',
-      color: 'amber',
-      badgeBg: 'bg-amber-50',
-      badgeText: 'text-amber-800',
       icon: CheckCircle2,
+      badge: 'GOLD EXPORTS',
+      cardBg: 'bg-[#FEF9C3]',
+      cardBorder: 'border-[#FACC15]',
+      cardHover: 'hover:border-[#CA8A04] hover:shadow-md',
+      textColor: 'text-[#854D0E]',
+      subtitleColor: 'text-[#A16207]',
+      iconBg: 'bg-[#FDE047]',
+      iconColor: 'text-[#713F12]',
+      badgeBg: 'bg-[#FDE047]',
+      badgeText: 'text-[#713F12]',
+      gradientTop: 'from-[#CA8A04] via-[#EAB308] to-[#A16207]',
+      branchesOutTo: ['rag_retrieval', 'streamlit_dashboard'],
       inputs: 'Case determinations, resource audits, microservice counts, build metadata',
-      outputs: 'Gold warehouse database (gold_database.db) & JSON extracts',
-      desc: 'Generates customer_deletion_audit, resource_audit, system_deletion_summary, and warehouse_build_metadata.',
-      branchesTo: ['rag_retrieval', 'streamlit_dashboard']
+      outputs: 'Gold warehouse database (gold_database.db) & compliant output.csv',
+      description: 'Generates customer_deletion_audit, resource_audit, system_deletion_summary, and strict Kahn DAG remediation plans.',
+      keyFunctions: ['Kahn topological sort', 'Step JSON serialization', 'Direct feed to Dashboard & RAG']
     },
     {
       id: 'rag_retrieval',
       stepNo: 12,
       title: 'RAG Retrieval',
-      subtitle: 'Hybrid Identifier & Context Retrieval',
+      subtitle: 'Vector & Keyword Context Assembly',
       layer: 'RAG / AI',
-      color: 'orange',
-      badgeBg: 'bg-orange-50',
-      badgeText: 'text-[#EA580C]',
       icon: Search,
-      inputs: 'Queries normalized across CASE001, case_01, CUST001 + Silver & Gold DBs',
-      outputs: 'Customer-isolated evidence chunks & activity context',
-      desc: 'Retrieves relevant evidence and historical activities while enforcing strict cross-customer context boundaries.',
-      branchesTo: ['relevant_evidence'],
-      branchesFrom: ['silver_db', 'gold_outputs']
+      badge: 'RAG INDEXER',
+      cardBg: 'bg-[#FFF7ED]',
+      cardBorder: 'border-[#FDBA74]',
+      cardHover: 'hover:border-[#EA580C] hover:shadow-md',
+      textColor: 'text-[#7C2D12]',
+      subtitleColor: 'text-[#9A3412]',
+      iconBg: 'bg-[#FFEDD5]',
+      iconColor: 'text-[#EA580C]',
+      badgeBg: 'bg-[#FFEDD5]',
+      badgeText: 'text-[#C2410C]',
+      gradientTop: 'from-[#EA580C] to-[#F97316]',
+      branchesInFrom: ['silver_db', 'gold_outputs'],
+      inputs: 'Customer identifier queries + normalized entities from Silver & Gold',
+      outputs: 'Case-isolated evidence chunks, log excerpts, and policy clauses',
+      description: 'Retrieves relevant evidence and historical activities while enforcing strict cross-customer context boundaries and cutoff admissibility.',
+      keyFunctions: ['Multi-identifier lookup', 'Context window chunking', 'Admissibility filtering']
     },
     {
       id: 'relevant_evidence',
       stepNo: 13,
       title: 'Relevant Evidence + Policies',
-      subtitle: 'Grounded Context Assembly',
+      subtitle: 'Grounded Evidence Isolation',
       layer: 'RAG / AI',
-      color: 'orange',
-      badgeBg: 'bg-orange-50',
-      badgeText: 'text-[#EA580C]',
       icon: FileText,
-      inputs: 'Retrieved evidence metadata, audit cutoff timestamps, dim_deletion_policy rules',
-      outputs: 'Grounded prompt context payload',
-      desc: 'Pairs each finding with its proving file_id, activity_id, or statutory policy retention rule.',
-      branchesTo: ['gemini_api']
+      badge: 'GROUNDING',
+      cardBg: 'bg-[#FFF7ED]',
+      cardBorder: 'border-[#FDBA74]',
+      cardHover: 'hover:border-[#EA580C] hover:shadow-sm',
+      textColor: 'text-[#7C2D12]',
+      subtitleColor: 'text-[#9A3412]',
+      iconBg: 'bg-[#FFEDD5]',
+      iconColor: 'text-[#EA580C]',
+      badgeBg: 'bg-[#FFEDD5]',
+      badgeText: 'text-[#C2410C]',
+      gradientTop: 'from-[#EA580C] to-[#F97316]',
+      inputs: 'Retrieved evidence metadata, audit timestamps, dim_deletion_rule requirements',
+      outputs: 'Structured, untrusted evidence blocks for LLM prompt ingestion',
+      description: 'Pairs each finding with its proving file_id, activity_id, or statutory policy retention rule while marking external content untrusted.',
+      keyFunctions: ['Prompt payload packaging', 'Evidence reference binding', 'Prompt injection shielding']
     },
     {
       id: 'gemini_api',
       stepNo: 14,
       title: 'Gemini API',
-      subtitle: 'Zero-Hallucination LLM Reasoner',
+      subtitle: 'Zero-Hallucination Reasoner',
       layer: 'RAG / AI',
-      color: 'orange',
-      badgeBg: 'bg-orange-50',
-      badgeText: 'text-[#EA580C]',
       icon: Sparkles,
-      inputs: 'Grounded prompt payload with system constraints',
-      outputs: 'Structured explanation vectors',
-      desc: 'Executes under strict system prompt: document content is treated as untrusted evidence; decisions come solely from Gold.',
-      branchesTo: ['natural_lang']
+      badge: 'GEMINI 2.5',
+      cardBg: 'bg-white',
+      cardBorder: 'border-[#EA580C]',
+      cardHover: 'hover:border-[#C2410C] hover:shadow-md ring-2 ring-[#EA580C]/20',
+      textColor: 'text-stone-900',
+      subtitleColor: 'text-stone-500',
+      iconBg: 'bg-[#FFEAE0]',
+      iconColor: 'text-[#EA580C]',
+      badgeBg: 'bg-[#EA580C]',
+      badgeText: 'text-white',
+      gradientTop: 'from-[#EA580C] via-[#9B72CB] to-[#4285F4]',
+      inputs: 'Grounded prompt payload with system constraints and Gold determinations',
+      outputs: 'Structured forensic audit explanation vectors',
+      description: 'Executes under strict system prompt: document content is treated as untrusted evidence; decisions come solely from the Gold analytical warehouse.',
+      keyFunctions: ['Zero-hallucination synthesis', 'Forensic justification generation', 'Citation validation']
     },
     {
       id: 'natural_lang',
       stepNo: 15,
       title: 'Natural Language Explanations',
-      subtitle: 'Evidence-Grounded Audit Reasoning',
+      subtitle: 'Audit Reasoning & Compliance Reports',
       layer: 'RAG / AI',
-      color: 'orange',
-      badgeBg: 'bg-orange-50',
-      badgeText: 'text-[#EA580C]',
       icon: Bot,
-      inputs: 'Structured LLM outputs',
-      outputs: 'Plain-English forensic explanations with source citations',
-      desc: 'Synthesizes why a case is complete or incomplete, detailing residual systems and necessary verification checks.',
-      branchesTo: ['streamlit_dashboard']
+      badge: 'EXPLANATIONS',
+      cardBg: 'bg-[#FFF7ED]',
+      cardBorder: 'border-[#FFEDD5]',
+      cardHover: 'hover:border-[#FDBA74] hover:shadow-sm',
+      textColor: 'text-[#7C2D12]',
+      subtitleColor: 'text-[#9A3412]',
+      iconBg: 'bg-[#FFEDD5]',
+      iconColor: 'text-[#EA580C]',
+      badgeBg: 'bg-[#FFEDD5]',
+      badgeText: 'text-[#C2410C]',
+      gradientTop: 'from-[#EA580C] to-[#F97316]',
+      branchesOutTo: ['streamlit_dashboard'],
+      inputs: 'Structured LLM outputs from Gemini API',
+      outputs: 'Plain-English forensic explanations with exact file and activity citations',
+      description: 'Synthesizes why a case is complete or incomplete, detailing residual systems and necessary verification checks for legal compliance.',
+      keyFunctions: ['Executive summaries', 'Technical audit notes', 'Citation linking']
     },
     {
       id: 'streamlit_dashboard',
       stepNo: 16,
       title: 'Streamlit Dashboard',
-      subtitle: 'Interactive SOC Audit Portal',
+      subtitle: 'AEGIS SOC Forensic Portal (Port 6969 & 8501)',
       layer: 'Dashboard',
-      color: 'emerald',
-      badgeBg: 'bg-emerald-50',
-      badgeText: 'text-emerald-800',
       icon: LayoutDashboard,
+      badge: 'SOC AUDIT PORTAL',
+      cardBg: 'bg-[#F0FDF4]',
+      cardBorder: 'border-[#86EFAC]',
+      cardHover: 'hover:border-[#22C55E] hover:shadow-md',
+      textColor: 'text-[#14532D]',
+      subtitleColor: 'text-[#166534]',
+      iconBg: 'bg-[#DCFCE7]',
+      iconColor: 'text-[#15803D]',
+      badgeBg: 'bg-[#DCFCE7]',
+      badgeText: 'text-[#166534]',
+      gradientTop: 'from-[#16A34A] to-[#15803D]',
+      branchesInFrom: ['gold_outputs', 'natural_lang'],
       inputs: 'Gold analytical outputs + Gemini natural language explanations',
-      outputs: 'Real-time analyst inspection interface',
-      desc: 'Interactive SOC portal providing dual-perspective analysis, case drill-down, and evidence verification.',
-      branchesTo: ['charts_filters'],
-      branchesFrom: ['gold_outputs', 'natural_lang']
+      outputs: 'Real-time analyst inspection interface and forensic case drill-downs',
+      description: 'Interactive SOC portal providing dual-perspective analysis, case drill-down, and evidence verification.',
+      keyFunctions: ['Dual-perspective switcher', 'Real-time evidence viewer', 'Live Gold warehouse query']
     },
     {
       id: 'charts_filters',
@@ -290,13 +423,22 @@ export const InteractiveRelationshipGraph: React.FC<DAGProps> = ({
       title: 'Charts, Filters, Search',
       subtitle: 'Case & Customer Analysis',
       layer: 'Dashboard',
-      color: 'emerald',
-      badgeBg: 'bg-emerald-50',
-      badgeText: 'text-emerald-800',
       icon: Sliders,
-      inputs: 'Streamlit dashboard query engines',
+      badge: 'ANALYTICAL DRILLDOWN',
+      cardBg: 'bg-[#ECFDF5]',
+      cardBorder: 'border-[#A7F3D0]',
+      cardHover: 'hover:border-[#34D399] hover:shadow-sm',
+      textColor: 'text-[#064E3B]',
+      subtitleColor: 'text-[#065F46]',
+      iconBg: 'bg-[#D1FAE5]',
+      iconColor: 'text-[#059669]',
+      badgeBg: 'bg-[#D1FAE5]',
+      badgeText: 'text-[#065F46]',
+      gradientTop: 'from-[#059669] to-[#047857]',
+      inputs: 'Dashboard query engines and interactive filters',
       outputs: 'Dynamic visualizations, microservice leakage matrices, case drill-down',
-      desc: 'Enables auditors to filter by system_id, examine retention exceptions, and export compliant CSV records.'
+      description: 'Enables auditors to filter by system_id, examine retention exceptions, and export compliant CSV records.',
+      keyFunctions: ['Microservice leakage matrix', 'Customer timeline search', 'CSV export']
     }
   ];
 
@@ -306,7 +448,7 @@ export const InteractiveRelationshipGraph: React.FC<DAGProps> = ({
   return (
     <div className="space-y-6">
       
-      {/* Top Header Card */}
+      {/* Header Banner */}
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#EFE5DB] shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -317,418 +459,268 @@ export const InteractiveRelationshipGraph: React.FC<DAGProps> = ({
             <h2 className="text-2xl sm:text-3xl font-extrabold text-[#191D24] tracking-tight flex items-center gap-2">
               Medallion Data &amp; Audit Pipeline DAG
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-semibold">
-                17 Topological Stages
+                17 Stages &bull; Strict Acyclicity
               </span>
             </h2>
-            <p className="text-xs sm:text-sm text-[#525B69] mt-0.5">
-              Complete acyclic flow from Raw Ingestion to Silver Database, Gold Analytics, Gemini RAG, and SOC Dashboard.
+            <p className="text-xs sm:text-sm text-[#525B69] mt-0.5 leading-relaxed max-w-3xl">
+              Complete acyclic architectural pipeline from Raw Data Ingestion to Bronze lakehouse, Silver relational normalization, Gold analytical marts, Gemini RAG reasoning, and the interactive SOC Dashboard.
             </p>
           </div>
 
-          {/* View Mode Switcher */}
-          <div className="inline-flex items-center p-1 rounded-full bg-[#FAF7F2] border border-[#EFE5DB] text-xs font-semibold">
-            <button
-              onClick={() => setDagViewMode('pipeline_dag')}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-all cursor-pointer ${
-                dagViewMode === 'pipeline_dag'
-                  ? 'bg-white text-stone-900 shadow-2xs font-bold'
-                  : 'text-stone-500 hover:text-stone-900'
-              }`}
-            >
-              <GitBranch className="w-3.5 h-3.5 text-[#EA580C]" />
-              <span>Pipeline Flow DAG</span>
-            </button>
-
-            <button
-              onClick={() => setDagViewMode('case_schedule')}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-all cursor-pointer ${
-                dagViewMode === 'case_schedule'
-                  ? 'bg-white text-stone-900 shadow-2xs font-bold'
-                  : 'text-stone-500 hover:text-stone-900'
-              }`}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Case Remediation Schedule</span>
-            </button>
+          <div className="text-xs font-mono px-3.5 py-2 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB] text-stone-600 shadow-2xs shrink-0 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#EA580C] animate-pulse"></span>
+            <span>2 Lateral Cross-Branch Paths Active</span>
           </div>
         </div>
 
-        {/* Quick Legend Bar */}
+        {/* Color Legend Bar Matching Website */}
         <div className="p-3.5 bg-[#FAF7F2] rounded-2xl border border-[#EFE5DB] flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className="text-stone-500 font-medium">Layers:</span>
-            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-mono font-semibold">Bronze (Raw)</span>
-            <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-mono font-semibold">Silver (Normalized)</span>
-            <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-mono font-semibold">Gold (Analytical)</span>
-            <span className="px-2 py-0.5 rounded-full bg-orange-50 text-[#EA580C] border border-orange-200 text-[10px] font-mono font-semibold">RAG + Gemini AI</span>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-mono font-semibold">Dashboard Portal</span>
+            <span className="text-stone-500 font-bold">Layers:</span>
+            <span className="px-2.5 py-1 rounded-full bg-stone-100 text-stone-700 border border-stone-200 text-[10px] font-mono font-semibold">
+              Raw Ingestion
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-[#FBE9DC] text-[#B45309] border border-[#EAD5C3] text-[10px] font-mono font-semibold">
+              Bronze Lake (SHA-256)
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-800 border border-slate-300 text-[10px] font-mono font-semibold">
+              Silver (8 Normalized Tables)
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-[#FEF08A] text-[#854D0E] border border-[#FDE047] text-[10px] font-mono font-semibold">
+              Gold (Analytics &amp; Marts)
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-[#FFEAE0] text-[#EA580C] border border-[#FDBA74] text-[10px] font-mono font-semibold">
+              RAG &amp; Gemini AI
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-[#DCFCE7] text-[#166534] border border-[#86EFAC] text-[10px] font-mono font-semibold">
+              SOC Dashboard Portal
+            </span>
           </div>
 
           <span className="text-[11px] font-mono text-stone-500">
-            Acyclicity: <strong>Guaranteed (0 cycles)</strong>
+            Click any node below to inspect schema &amp; logic &rarr;
           </span>
         </div>
       </div>
 
-      {/* VIEW 1: FULL PIPELINE DAG (Exact Matching the Uploaded Diagram with Website Styling) */}
-      {dagViewMode === 'pipeline_dag' && (
-        <div className="space-y-6">
+      {/* Main DAG Visual Canvas with Interactive Inspector Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* Left / Center Column: The Exact Vertical DAG Flow matching the Uploaded Diagram */}
+        <div className="lg:col-span-8 bg-white rounded-3xl p-6 sm:p-8 border border-[#EFE5DB] shadow-xs relative">
           
-          {/* Main Visual DAG Flow Canvas */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#EFE5DB] shadow-xs space-y-6">
-            
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#EFE5DB]">
-              <div>
-                <h3 className="text-base font-extrabold text-[#191D24]">
-                  Topological Architecture Flowchart
-                </h3>
-                <p className="text-xs text-stone-500">
-                  Click any node to inspect inputs, outputs, and algorithmic transformation logic.
-                </p>
-              </div>
-
-              <div className="text-xs font-mono text-stone-500 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Active Branching: Silver &rarr; RAG &amp; Gold &rarr; Streamlit</span>
-              </div>
+          <div className="flex items-center justify-between pb-4 mb-6 border-b border-[#EFE5DB]">
+            <div className="flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-[#EA580C]" />
+              <h3 className="text-sm font-extrabold uppercase tracking-wider text-stone-900 font-mono">
+                Topological Execution Graph
+              </h3>
             </div>
+            <div className="text-[11px] font-mono text-stone-500 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>17 Nodes &bull; 0 Cycles</span>
+            </div>
+          </div>
 
-            {/* Responsive DAG Layout: Left Column (Medallion Engine), Right Column (RAG & Gemini), Bottom (Dashboard) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative">
-              
-              {/* Left Column: Medallion Backbone (Nodes 1 to 11) */}
-              <div className="lg:col-span-7 space-y-3">
-                <div className="flex items-center gap-2 mb-2 pb-1 border-b border-stone-100">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#EA580C]"></span>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900 font-mono">
-                    Medallion Data &amp; Warehouse Backbone (Stages 1 &ndash; 11)
-                  </h4>
-                </div>
+          {/* Vertical Pipeline Spine with Branch Rails */}
+          <div className="relative max-w-xl mx-auto space-y-3">
 
-                {nodes.slice(0, 11).map((node, idx) => {
-                  const Icon = node.icon;
-                  const isSelected = selectedNodeId === node.id;
-                  const isSilverDb = node.id === 'silver_db';
-                  const isGoldOutputs = node.id === 'gold_outputs';
+            {nodes.map((node, index) => {
+              const Icon = node.icon;
+              const isSelected = selectedNodeId === node.id;
+              const isSilverDb = node.id === 'silver_db';
+              const isGoldOutputs = node.id === 'gold_outputs';
+              const isRagRetrieval = node.id === 'rag_retrieval';
+              const isDashboard = node.id === 'streamlit_dashboard';
 
-                  return (
-                    <div key={node.id} className="relative">
-                      <div
-                        onClick={() => setSelectedNodeId(node.id)}
-                        className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 shadow-2xs ${
-                          isSelected
-                            ? 'bg-white border-[#EA580C] ring-2 ring-[#EA580C]/20 shadow-sm'
-                            : 'bg-[#FAF7F2] hover:bg-white border-[#EFE5DB] hover:border-stone-400'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                            node.layer === 'Bronze' ? 'bg-blue-100 text-blue-700' :
-                            node.layer === 'Silver' ? 'bg-purple-100 text-purple-700' :
-                            'bg-amber-100 text-amber-800'
-                          }`}>
-                            <Icon className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-stone-900 leading-tight">
-                                {node.title}
-                              </span>
-                              <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full ${node.badgeBg} ${node.badgeText}`}>
-                                {node.layer}
-                              </span>
-                            </div>
-                            <span className="text-[11px] text-stone-500 block leading-tight font-mono">
-                              {node.subtitle}
-                            </span>
-                          </div>
-                        </div>
+              return (
+                <div key={node.id} className="relative">
+                  
+                  {/* Lateral Branch Marker for Silver Database (Branches to RAG) */}
+                  {isSilverDb && (
+                    <div className="hidden sm:flex absolute -right-28 top-1/2 -translate-y-1/2 items-center gap-1.5 text-[10px] font-mono font-bold text-[#EA580C] bg-[#FFEAE0] px-2 py-1 rounded-lg border border-[#FDBA74] shadow-2xs z-10">
+                      <span>Feeds RAG</span>
+                      <CornerDownRight className="w-3 h-3 text-[#EA580C]" />
+                    </div>
+                  )}
 
-                        <div className="flex items-center gap-2 shrink-0">
-                          {isSilverDb && (
-                            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono font-bold text-[#EA580C] bg-[#FFEAE0] px-2 py-0.5 rounded-full border border-[#F6DCD0]">
-                              <span>Branches to RAG</span>
-                              <ArrowRight className="w-2.5 h-2.5" />
-                            </span>
-                          )}
-                          {isGoldOutputs && (
-                            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
-                              <span>Branches to UI</span>
-                              <CornerDownRight className="w-2.5 h-2.5" />
-                            </span>
-                          )}
-                          <span className="text-[11px] font-mono text-stone-400 font-bold">
-                            #{node.stepNo}
+                  {/* Lateral Branch Marker for Gold Outputs (Branches to Dashboard) */}
+                  {isGoldOutputs && (
+                    <div className="hidden sm:flex absolute -left-32 top-1/2 -translate-y-1/2 items-center gap-1.5 text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-1 rounded-lg border border-emerald-300 shadow-2xs z-10">
+                      <CornerRightDown className="w-3 h-3 text-emerald-700" />
+                      <span>Feeds Dashboard</span>
+                    </div>
+                  )}
+
+                  {/* Lateral Inbound Marker for RAG Retrieval */}
+                  {isRagRetrieval && (
+                    <div className="hidden sm:flex absolute -right-32 top-1/2 -translate-y-1/2 items-center gap-1.5 text-[10px] font-mono font-bold text-[#EA580C] bg-[#FFEAE0] px-2 py-1 rounded-lg border border-[#FDBA74] shadow-2xs z-10">
+                      <span>&larr; From Silver DB</span>
+                    </div>
+                  )}
+
+                  {/* Lateral Inbound Marker for Dashboard */}
+                  {isDashboard && (
+                    <div className="hidden sm:flex absolute -left-32 top-1/2 -translate-y-1/2 items-center gap-1.5 text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-1 rounded-lg border border-emerald-300 shadow-2xs z-10">
+                      <span>From Gold &rarr;</span>
+                    </div>
+                  )}
+
+                  {/* The Node Card */}
+                  <div
+                    onClick={() => setSelectedNodeId(node.id)}
+                    className={`group relative rounded-2xl p-4 sm:p-4.5 border transition-all duration-200 cursor-pointer shadow-2xs flex items-center justify-between gap-3 ${node.cardBg} ${node.cardBorder} ${node.cardHover} ${
+                      isSelected ? 'ring-3 ring-[#EA580C]/30 shadow-md scale-[1.01]' : ''
+                    }`}
+                  >
+                    {/* Top Accent Gradient Line */}
+                    {node.gradientTop && (
+                      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${node.gradientTop} rounded-t-2xl`} />
+                    )}
+
+                    <div className="flex items-center gap-3.5">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${node.iconBg} ${node.iconColor}`}>
+                        <Icon className="w-4.5 h-4.5 stroke-[2]" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className={`text-sm font-bold tracking-tight ${node.textColor}`}>
+                            {node.title}
+                          </h4>
+                          <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full ${node.badgeBg} ${node.badgeText}`}>
+                            {node.badge}
                           </span>
                         </div>
-                      </div>
-
-                      {/* Directional Down Arrow Connector */}
-                      {idx < 10 && (
-                        <div className="flex justify-center my-1 text-stone-300">
-                          <ArrowDown className="w-3.5 h-3.5 text-stone-400 stroke-[2.5]" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Right Column: RAG & Gemini AI Branch (Nodes 12 to 15) */}
-              <div className="lg:col-span-5 space-y-4">
-                
-                {/* Connecting Callout Banner from Silver Database */}
-                <div className="p-3.5 rounded-2xl bg-orange-50/70 border border-orange-200 text-xs text-[#EA580C] leading-relaxed flex items-start gap-2.5">
-                  <CornerRightDown className="w-4 h-4 text-[#EA580C] shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold">Branching Flow:</span>{' '}
-                    <strong className="text-stone-900">Silver Database</strong> and <strong className="text-stone-900">Gold Analytical Outputs</strong> feed directly into the RAG Retrieval engine with customer-isolated context.
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 mb-2 pb-1 border-b border-stone-100">
-                  <span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900 font-mono">
-                    RAG &amp; Gemini AI Track (Stages 12 &ndash; 15)
-                  </h4>
-                </div>
-
-                {nodes.slice(11, 15).map((node, idx) => {
-                  const Icon = node.icon;
-                  const isSelected = selectedNodeId === node.id;
-
-                  return (
-                    <div key={node.id} className="relative">
-                      <div
-                        onClick={() => setSelectedNodeId(node.id)}
-                        className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 shadow-2xs ${
-                          isSelected
-                            ? 'bg-white border-[#EA580C] ring-2 ring-[#EA580C]/20 shadow-sm'
-                            : 'bg-[#FAF7F2] hover:bg-white border-[#EFE5DB] hover:border-stone-400'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-xl bg-orange-100 text-[#EA580C] flex items-center justify-center">
-                            <Icon className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-stone-900 leading-tight">
-                                {node.title}
-                              </span>
-                              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-orange-50 text-[#EA580C]">
-                                {node.layer}
-                              </span>
-                            </div>
-                            <span className="text-[11px] text-stone-500 block leading-tight font-mono">
-                              {node.subtitle}
-                            </span>
-                          </div>
-                        </div>
-
-                        <span className="text-[11px] font-mono text-stone-400 font-bold">
-                          #{node.stepNo}
-                        </span>
-                      </div>
-
-                      {/* Directional Down Arrow Connector */}
-                      {idx < 3 && (
-                        <div className="flex justify-center my-1 text-stone-300">
-                          <ArrowDown className="w-3.5 h-3.5 text-stone-400 stroke-[2.5]" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* Selected Node Deep-Dive Inspector Panel */}
-                <div className="mt-4 p-5 rounded-3xl bg-[#FAF7F2] border border-[#EFE5DB] shadow-xs space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-[#EFE5DB]">
-                    <div className="flex items-center gap-2">
-                      <SelectedIcon className="w-4 h-4 text-[#EA580C]" />
-                      <h4 className="text-xs font-bold text-stone-900 uppercase tracking-tight">
-                        Node #{selectedNode.stepNo} &bull; {selectedNode.title}
-                      </h4>
-                    </div>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white border border-[#EFE5DB] text-stone-600 font-semibold">
-                      {selectedNode.layer}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-stone-600 leading-relaxed font-normal">
-                    {selectedNode.desc}
-                  </p>
-
-                  <div className="space-y-2 pt-1 font-mono text-[11px]">
-                    <div className="p-2.5 rounded-xl bg-white border border-[#EFE5DB]">
-                      <span className="text-[10px] uppercase font-bold text-stone-400 block mb-0.5">Incoming Inputs</span>
-                      <span className="text-stone-800 font-medium">{selectedNode.inputs}</span>
-                    </div>
-
-                    <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200">
-                      <span className="text-[10px] uppercase font-bold text-emerald-700 block mb-0.5">Produced Outputs</span>
-                      <span className="text-emerald-900 font-medium">{selectedNode.outputs}</span>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Bottom Row: Streamlit Dashboard & Analytics (Nodes 16 & 17) */}
-            <div className="pt-6 border-t border-[#EFE5DB] space-y-4">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900 font-mono">
-                  Convergence: Streamlit Dashboard &amp; Analysis Portal (Stages 16 &amp; 17)
-                </h4>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {nodes.slice(15, 17).map((node) => {
-                  const Icon = node.icon;
-                  const isSelected = selectedNodeId === node.id;
-
-                  return (
-                    <div
-                      key={node.id}
-                      onClick={() => setSelectedNodeId(node.id)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 shadow-2xs ${
-                        isSelected
-                          ? 'bg-white border-emerald-600 ring-2 ring-emerald-600/20 shadow-sm'
-                          : 'bg-[#FAF7F2] hover:bg-white border-[#EFE5DB] hover:border-stone-400'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
-                          <Icon className="w-4.5 h-4.5" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-stone-900">
-                              {node.title}
-                            </span>
-                            <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800">
-                              {node.layer}
-                            </span>
-                          </div>
-                          <span className="text-[11px] text-stone-500 font-mono block">
+                        {node.subtitle && (
+                          <p className={`text-xs font-mono mt-0.5 ${node.subtitleColor}`}>
                             {node.subtitle}
-                          </span>
-                        </div>
+                          </p>
+                        )}
                       </div>
+                    </div>
 
-                      <span className="text-xs font-mono font-bold text-stone-400">
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs font-mono font-bold text-stone-400 group-hover:text-stone-700 transition-colors">
                         #{node.stepNo}
                       </span>
+                      <ChevronRight className="w-3.5 h-3.5 text-stone-300 group-hover:text-stone-600 transition-transform group-hover:translate-x-0.5" />
                     </div>
-                  );
-                })}
+                  </div>
+
+                  {/* Vertical Connector Arrow */}
+                  {index < nodes.length - 1 && (
+                    <div className="flex justify-center my-1 text-stone-300">
+                      <ArrowDown className="w-3.5 h-3.5 text-stone-400 stroke-[2.5]" />
+                    </div>
+                  )}
+
+                </div>
+              );
+            })}
+
+          </div>
+
+        </div>
+
+        {/* Right Column: Node Inspector & Forensic Logic Deep-Dive */}
+        <div className="lg:col-span-4 sticky top-6 space-y-4">
+          
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#EFE5DB] shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EFE5DB]">
+              <div className="flex items-center gap-2">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${selectedNode.iconBg} ${selectedNode.iconColor}`}>
+                  <SelectedIcon className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono font-bold uppercase text-stone-400 block leading-tight">
+                    Node #{selectedNode.stepNo} Inspector
+                  </span>
+                  <h4 className="text-sm font-extrabold text-stone-900 leading-tight">
+                    {selectedNode.title}
+                  </h4>
+                </div>
+              </div>
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${selectedNode.badgeBg} ${selectedNode.badgeText}`}>
+                {selectedNode.layer}
+              </span>
+            </div>
+
+            <p className="text-xs text-stone-600 leading-relaxed font-normal">
+              {selectedNode.description}
+            </p>
+
+            {/* Inputs & Outputs Breakdown */}
+            <div className="space-y-2.5 font-mono text-xs">
+              <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EFE5DB]">
+                <span className="text-[10px] uppercase font-bold text-stone-400 block mb-1 flex items-center gap-1">
+                  <ArrowRight className="w-3 h-3 text-[#EA580C]" />
+                  Incoming Inputs
+                </span>
+                <span className="text-stone-800 text-[11px] leading-snug block font-medium">
+                  {selectedNode.inputs}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200">
+                <span className="text-[10px] uppercase font-bold text-emerald-700 block mb-1 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  Produced Outputs
+                </span>
+                <span className="text-emerald-900 text-[11px] leading-snug block font-medium">
+                  {selectedNode.outputs}
+                </span>
               </div>
             </div>
 
-          </div>
-
-        </div>
-      )}
-
-      {/* VIEW 2: CASE REMEDIATION SCHEDULE (Original Case-by-Case Topological Table) */}
-      {dagViewMode === 'case_schedule' && (
-        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#EFE5DB] shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-base font-extrabold text-[#191D24]">
-                Topological Step Schedule for {currentCase.case_id}
-              </h3>
-              <p className="text-xs text-stone-500 mt-0.5">
-                Exact sequence encoded into <code className="text-[#EA580C] font-mono">output.csv</code> via Kahn&apos;s topological sort
-              </p>
-            </div>
-
-            {/* Case Selector Dropdown */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-stone-600">Case:</span>
-              <select
-                value={selectedCaseId}
-                onChange={(e) => {
-                  setSelectedCaseId(e.target.value);
-                  setActiveStepIndex(null);
-                  if (onSelectCase) onSelectCase(e.target.value);
-                }}
-                className="px-3.5 py-1.5 rounded-xl bg-[#FAF7F2] border border-[#EFE5DB] text-xs text-stone-900 font-bold focus:outline-none focus:border-[#EA580C] shadow-2xs cursor-pointer font-mono"
-              >
-                {allCases.map((c) => (
-                  <option key={c.case_id} value={c.case_id}>
-                    {c.case_id} — {c.customer_name} ({c.deletion_status})
-                  </option>
+            {/* Algorithmic Responsibilities */}
+            <div className="pt-2">
+              <span className="text-[10px] uppercase font-bold text-stone-400 font-mono block mb-2">
+                Key Pipeline Functions
+              </span>
+              <ul className="space-y-1.5">
+                {selectedNode.keyFunctions.map((fn, idx) => (
+                  <li key={idx} className="flex items-center gap-2 text-xs text-stone-700">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#EA580C] shrink-0"></span>
+                    <span>{fn}</span>
+                  </li>
                 ))}
-              </select>
+              </ul>
             </div>
+
+            {/* Branching Notice */}
+            {(selectedNode.branchesOutTo || selectedNode.branchesInFrom) && (
+              <div className="p-3 rounded-xl bg-orange-50 border border-orange-200 text-xs text-stone-700 space-y-1">
+                <span className="text-[10px] font-bold uppercase font-mono text-[#EA580C] block">
+                  Acyclic Bypass Route
+                </span>
+                {selectedNode.branchesOutTo && (
+                  <p className="text-[11px] text-stone-600">
+                    &bull; Transmits direct context feed to: <strong className="text-stone-900 font-semibold">{selectedNode.branchesOutTo.join(', ')}</strong>
+                  </p>
+                )}
+                {selectedNode.branchesInFrom && (
+                  <p className="text-[11px] text-stone-600">
+                    &bull; Receives direct bypass stream from: <strong className="text-stone-900 font-semibold">{selectedNode.branchesInFrom.join(', ')}</strong>
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-[#EFE5DB]">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-[#FAF7F2] text-stone-600 uppercase tracking-wider text-[10px] border-b border-[#EFE5DB]">
-                <tr>
-                  <th className="py-3 px-4 font-bold text-center w-16">Step</th>
-                  <th className="py-3 px-4 font-bold">Phase</th>
-                  <th className="py-3 px-4 font-bold">Operation (DAG Action)</th>
-                  <th className="py-3 px-4 font-bold">System ID</th>
-                  <th className="py-3 px-4 font-bold">Resource ID</th>
-                  <th className="py-3 px-4 font-bold text-center">Target State</th>
-                  <th className="py-3 px-4 font-bold">Evidence Citation</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#EFE5DB] font-mono text-[11px] bg-white">
-                {steps.map((s, idx) => {
-                  const isSelected = activeStepIndex === idx;
-                  return (
-                    <tr 
-                      key={s.step_no} 
-                      onClick={() => setActiveStepIndex(idx)}
-                      className={`hover:bg-[#FAF7F2] transition cursor-pointer ${isSelected ? 'bg-orange-50/50' : ''}`}
-                    >
-                      <td className="py-2.5 px-4 text-center font-bold text-stone-900">
-                        #{s.step_no}
-                      </td>
-                      <td className="py-2.5 px-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-sans font-bold ${
-                          s.phase === 'FINDING' ? 'bg-amber-100 text-amber-800' :
-                          s.phase === 'REMEDIATION' ? 'bg-blue-100 text-blue-800' :
-                          'bg-emerald-100 text-emerald-800'
-                        }`}>
-                          {s.phase}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-4 font-bold text-stone-900">
-                        {s.operation}
-                      </td>
-                      <td className="py-2.5 px-4 text-[#EA580C] font-semibold">
-                        {s.system_id}
-                      </td>
-                      <td className="py-2.5 px-4 text-stone-700">
-                        {s.resource_id}
-                      </td>
-                      <td className="py-2.5 px-4 text-center font-bold">
-                        <span className={`px-2 py-0.5 rounded text-[10px] ${
-                          s.state === 'PRESENT' || s.state === 'ACTIVE' ? 'text-rose-600 bg-rose-50 border border-rose-200' :
-                          s.state === 'DISABLED' || s.state === 'BLOCKED' ? 'text-amber-700 bg-amber-50 border border-amber-200' :
-                          'text-emerald-700 bg-emerald-50 border border-emerald-200'
-                        }`}>
-                          {s.state}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-4 font-sans text-stone-500 text-[10px]">
-                        {s.evidence_id ? <code className="bg-[#FAF7F2] px-1.5 py-0.5 rounded text-[#EA580C] font-bold font-mono">{s.evidence_id}</code> : <span className="text-stone-400 italic">None (Proposed)</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          {/* Quick Summary Card */}
+          <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EFE5DB] text-xs text-stone-600 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-stone-900 font-bold">
+              <Activity className="w-3.5 h-3.5 text-[#EA580C]" />
+              <span>Zero-Hallucination Invariant</span>
+            </div>
+            <p className="text-[11px] text-stone-500 leading-relaxed">
+              Every audit status is mathematically derived in the Gold layer from verified Silver facts. The Gemini RAG layer synthesizes natural language citations but cannot mutate decisions.
+            </p>
           </div>
+
         </div>
-      )}
+
+      </div>
 
     </div>
   );
