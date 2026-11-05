@@ -9,7 +9,7 @@ export const RealInvestigation: React.FC<RealInvestigationProps> = ({ onOpenCase
   return (
     <section id="research" className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div 
-        onClick={() => onOpenCase('case_0412')}
+        onClick={() => onOpenCase('case_09')}
         className="group relative cursor-pointer bg-white hover:bg-[#FFFDFB] rounded-3xl p-6 sm:p-8 border border-[#EFE5DB] hover:border-[#E8C2AF] shadow-md hover:shadow-xl transition-all duration-300"
       >
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -23,7 +23,7 @@ export const RealInvestigation: React.FC<RealInvestigationProps> = ({ onOpenCase
               {/* Case badge */}
               <div className="flex items-center justify-between">
                 <span className="font-mono text-xs font-black text-[#5B3F23] bg-white/70 px-2 py-0.5 rounded-sm">
-                  Case #0412
+                  Case #09
                 </span>
                 <span className="text-[10px] text-[#7A5833] font-mono">CONFIDENTIAL</span>
               </div>
@@ -31,13 +31,13 @@ export const RealInvestigation: React.FC<RealInvestigationProps> = ({ onOpenCase
               {/* Resolved Stamp */}
               <div className="my-auto mx-auto transform -rotate-12 border-2 border-[#D94E1B] bg-white/90 px-3 py-1 rounded-sm shadow-xs">
                 <span className="font-mono text-xs font-black tracking-widest text-[#D94E1B] uppercase">
-                  RESOLVED
+                  INVESTIGATED
                 </span>
               </div>
 
               {/* Bottom lines */}
               <div className="flex items-center justify-between text-[9px] text-[#6B4F32] font-mono">
-                <span>Identity: Elena R.</span>
+                <span>Subject: Kwame A.</span>
                 <span>Audit: 100%</span>
               </div>
             </div>

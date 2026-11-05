@@ -41,16 +41,8 @@ def make_standard_tools(
                         "evidence_id": evidence_id,
                         "reason": f"Evidence captured_at ({meta.captured_at.isoformat()}) is strictly after audit cutoff ({dt_audit.isoformat()}).",
                     }
-                if event_time:
-                    dt_event = datetime.fromisoformat(event_time.replace("Z", "+00:00"))
-                    if dt_event > dt_audit:
-                        return {
-                            "admissible": False,
-                            "evidence_id": evidence_id,
-                            "reason": f"Event timestamp ({dt_event.isoformat()}) is strictly after audit cutoff ({dt_audit.isoformat()}).",
-                        }
             except Exception as ex:
-                return {"admissible": False, "reason": f"Invalid timestamp format: {ex}"}
+                return {"admissible": False, "reason": f"Invalid audit_at format: {ex}"}
 
         return {
             "admissible": True,
@@ -86,8 +78,7 @@ def make_standard_tools(
                     "candidate_id": {"type": "string"},
                     "case_id": {"type": "string"},
                     "evidence_id": {"type": "string"},
-                    "audit_at": {"type": "string", "description": "ISO-8601 audit cutoff timestamp"},
-                    "event_time": {"type": "string", "description": "ISO-8601 event timestamp"},
+                    "event_time": {"type": "string"},
                 },
                 "required": ["candidate_id", "case_id", "evidence_id"],
             },

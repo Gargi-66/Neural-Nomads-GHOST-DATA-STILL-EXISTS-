@@ -1,0 +1,16 @@
+policy_id,source_rule_id,resource_type,action_required,retention_period
+rule_01,rule_01,USER_PROFILE,DELETE,Always
+rule_02,rule_02,SECONDARY_IDENTIFIER,DELETE,Always
+rule_03,rule_03,SEARCH_INDEX_ENTRY,DELETE,Always
+rule_04,rule_04,CACHE_ENTRY,DELETE,Always
+rule_05,rule_05,SUPPORT_MESSAGE,REDACT,"Conversation contains shared customer, agent, or order context that must be retained"
+rule_06,rule_06,SUPPORT_ATTACHMENT,DELETE,Attachment belongs only to the deletion subject
+rule_07,rule_07,ANALYTICS_PROFILE,ANONYMIZE,Record is still attributable to a user
+rule_08,rule_08,PRODUCT_TELEMETRY,ANONYMIZE,Record is still attributable to a user
+rule_09,rule_09,USER_EXPORT,DELETE,Always
+rule_10,rule_10,MARKETING_PROFILE,DELETE,Always
+rule_11,rule_11,EMAIL_DELIVERY_LOG,REDACT,Log contains a user email address
+rule_12,rule_12,SECURITY_AUDIT_LOG,RETAIN,Record is within the supplied retention period
+rule_13,rule_13,LEGAL_HOLD_RECORD,RETAIN,A supplied legal hold is active
+rule_14,rule_14,BACKUP_ARCHIVE,RETAIN,Restore access can be blocked
+rule_15,rule_15,ACCOUNT_TOMBSTONE,REDACT,Account is deleted and only a stable internal user_id is needed to preserve references to retained records

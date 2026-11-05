@@ -80,11 +80,7 @@ def evaluate_policy(resource: ResourceContext, policy: CompiledPolicy) -> Policy
         elif "still attributable to a user" in cond and resource.is_attributable:
             selected_rule = rule
             break
-        elif "user email address" in cond and (
-            resource.contains_user_email or
-            any("@" in str(i) or "email" in str(i).lower() for i in resource.present_identifiers) or
-            resource.attributes.get("contains_email", False)
-        ):
+        elif "user email address" in cond:
             selected_rule = rule
             break
         elif "retention period" in cond and resource.within_retention_period:
