@@ -1,14 +1,26 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import { Download, Sparkles, Radar, Search, Network, BarChart3, type LucideIcon } from 'lucide-react';
 
 interface NavbarProps {
-  onOpenInvestigate: () => void;
-  activeSection: string;
-  setActiveSection: (sec: string) => void;
+  currentView: string;
+  onNavigate: (view: string) => void;
+  onDownloadOutput: () => void;
+  onOpenSampleCase?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenInvestigate, activeSection, setActiveSection }) => {
-  const navItems = [
+interface NavItem {
+  id: string;
+  label: string;
+  icon?: LucideIcon;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({
+  currentView,
+  onNavigate,
+  onDownloadOutput,
+  onOpenSampleCase
+}) => {
+  const mainNavItems: NavItem[] = [
     { id: 'product', label: 'Product' },
     { id: 'how-it-works', label: 'How It Works' },
     { id: 'architecture', label: 'Architecture' },
@@ -17,62 +29,117 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenInvestigate, activeSection
     { id: 'docs', label: 'Docs' },
   ];
 
-  const handleNavClick = (id: string) => {
-    setActiveSection(id);
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
+  const toolNavItems: NavItem[] = [
+    { id: 'radar', label: 'Radar', icon: Radar },
+    { id: 'explorer', label: 'Cases (518)', icon: Search },
+    { id: 'lineage', label: 'Graph', icon: Network },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  ];
 
   return (
-    <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-[#FBF8F5]/90 border-b border-[#F0E6DD] transition-all">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-        {/* Brand Logo */}
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-[#E05822] flex items-center justify-center shadow-md shadow-orange-500/20 text-white font-bold ring-2 ring-orange-200">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="currentColor" fillOpacity="0.15" />
-              <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
-              <span className="text-2xl font-black tracking-tight text-[#1E232A]">AEGIS</span>
-            </div>
-          </div>
+    <header className="sticky top-0 z-50 bg-[#FAFAF9]/95 backdrop-blur-md border-b border-stone-200/80 transition-all select-none">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-3">
+        
+        {/* Left: Brand Logo */}
+        <div 
+          onClick={() => onNavigate('product')}
+          className="flex items-center gap-2 cursor-pointer group select-none shrink-0"
+        >
+          <span className="w-2 h-2 rounded-full bg-[#EA580C]"></span>
+          <span className="text-base font-extrabold tracking-tight text-stone-900 group-hover:text-[#EA580C] transition-colors">
+            AEGIS
+          </span>
+          <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200/80 hidden sm:inline-block">
+            v3.0 &bull; Forensic
+          </span>
         </div>
 
-        {/* Center Nav Links: Product, How It Works, Architecture, Use Cases, Research, Docs */}
-        <nav className="hidden md:flex items-center gap-6">
-          {navItems.map((item) => {
-            const isActive = activeSection === item.id;
+        {/* Center: Space-Optimized Navigation without any scrollbars */}
+        <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 py-1 shrink">
+          {mainNavItems.map((item) => {
+            const isActive = currentView === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                className={`text-sm font-semibold transition-all duration-200 ${
+                onClick={() => onNavigate(item.id)}
+                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium tracking-tight transition-all duration-150 cursor-pointer ${
                   isActive
-                    ? 'text-[#E05822]'
-                    : 'text-[#4A5568] hover:text-[#1E232A]'
+                    ? 'bg-white text-stone-950 font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-stone-300'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
                 }`}
               >
-                {item.label}
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+
+          <div className="h-3.5 w-px bg-stone-300 mx-1 xl:mx-1.5"></div>
+
+          {/* Forensic Investigation Tools */}
+          {toolNavItems.map((item) => {
+            const isActive = currentView === item.id;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => onNavigate(item.id)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-stone-900 text-white shadow-xs font-semibold'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                }`}
+              >
+                {Icon && <Icon className="w-3.5 h-3.5 opacity-80" />}
+                <span>{item.label}</span>
               </button>
             );
           })}
         </nav>
 
-        {/* Right CTA Button */}
-        <div className="flex items-center gap-3">
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          {onOpenSampleCase && (
+            <button
+              onClick={onOpenSampleCase}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold shadow-xs hover:shadow-sm transition-all cursor-pointer"
+            >
+              <Sparkles className="w-3 h-3 text-orange-400" />
+              <span>Sample Case</span>
+            </button>
+          )}
+
           <button
-            onClick={onOpenInvestigate}
-            className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#E05822] hover:bg-[#C94715] text-white text-sm font-bold shadow-md shadow-orange-500/25 transition-all duration-200 transform hover:-translate-y-0.5"
+            onClick={onDownloadOutput}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 hover:text-stone-900 text-xs font-semibold transition-all cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+            title="Download the official verified output.csv"
           >
-            <span>Investigate Now</span>
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+            <Download className="w-3 h-3 text-[#EA580C]" />
+            <span className="hidden sm:inline">output.csv</span>
           </button>
         </div>
+
+      </div>
+
+      {/* Mobile Sub-Navigation Bar (Scrollbar completely hidden) */}
+      <div className="lg:hidden flex items-center gap-1 bg-[#FAFAF9] border-t border-stone-200/80 px-3 py-1.5 overflow-x-auto text-xs no-scrollbar">
+        {[...mainNavItems, ...toolNavItems].map((item) => {
+          const isActive = currentView === item.id;
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onNavigate(item.id)}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold transition-all ${
+                isActive
+                  ? 'bg-white text-stone-900 border border-stone-300 shadow-2xs font-bold'
+                  : 'text-stone-600 hover:text-stone-800'
+              }`}
+            >
+              {Icon && <Icon className="w-3 h-3 opacity-80" />}
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
       </div>
     </header>
   );

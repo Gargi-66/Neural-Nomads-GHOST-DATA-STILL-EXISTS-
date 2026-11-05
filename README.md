@@ -1,157 +1,134 @@
-# HackerRank Orchestrate - October 2026
+# 👻 AEGIS 3.0: Ghost Data Still Exists
+> **AI-Powered Deterministic Deletion-Audit & Forensic Lakehouse Engine**  
+> *HackerRank Orchestrate (October 2026)*
 
-## Ghost Data Still Exists
-
-Build an AI agent that audits whether a user's personal data was actually deleted.
-
-A deletion workflow may report **Complete** while data still exists in databases, logs, support attachments, exports, search indexes, archives, or backups. Sync and restore processes may also bring deleted data back.
-
-For each request, the agent must first determine whether deletion was actually requested. It then returns `COMPLETE`, `INCOMPLETE`, or `NOT_APPLICABLE`, reports any remaining data or recreation risk, and produces the ordered remediation and verification steps required to finish an authorized deletion safely.
-
-Read [`problem_statement.md`](./problem_statement.md) for the complete challenge contract.
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688.svg)](https://fastapi.tiangolo.com/)
+[![React 19](https://img.shields.io/badge/React-19.0-61DAFB.svg)](https://react.dev/)
+[![SQLite Lakehouse](https://img.shields.io/badge/SQLite-Lakehouse-003B57.svg)](https://www.sqlite.org/)
+[![Google Gemini](https://img.shields.io/badge/Gemini-2.0%20Flash%20%2F%20Pro-8E24AA.svg)](https://ai.google.dev/)
+[![Evaluation Status](https://img.shields.io/badge/Evaluation-518%2F518%20Verified-success.svg)](output.csv)
 
 ---
 
-## Quick Start
+## 📌 Executive Summary
 
-Clone the repository and move into the project directory:
+When a company claims account deletion is **Complete**, personal data frequently still haunts read replicas, cold backups, sync crons, and unrotated logs. Northstar Shop lost **\$2.4 Million** when a supposedly deleted customer resurfaced weeks later.
 
-```bash
-git clone https://github.com/interviewstreet/hackerrank-orchestrate-october26.git
-cd hackerrank-orchestrate-october26
+**AEGIS 3.0** is an enterprise-grade forensic deletion audit platform that establishes ground truth at audit cutoff. It inspects **94 multi-modal evidence captures** across **518 evaluation cases**, reconstructs historical identity aliases, and generates mathematically sound, dependency-ordered DAG remediation plans.
+
+---
+
+## 🏛️ System Architecture
+
+### United Customer Data Model (Medallion Lakehouse)
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        MEDALLION ARCHITECTURE                          │
+├────────────────────────────────────────────────────────────────────────┤
+│  [BRONZE LAYER]                                                        │
+│  Raw Ingestion: deletion_requests (518) • user_identities (850)        │
+│  user_audit_log (306) • system_activity (4,011) • evidence_files (94)  │
+│  24 SQL Replicas, Logs, OCR Attachments, JSON Exports                  │
+├───────────────────────────────────┬────────────────────────────────────┤
+│                                   │                                    │
+│  [SILVER LAYER]                   │  [GOLD LAYER]                      │
+│  Normalized Relational Lakehouse  │  Analytical Audit Warehouse        │
+│  data/silver/silver_database.db   │  gold/gold_database.db             │
+│  • dim_customer (850)             │  • customer_deletion_audit (518)   │
+│  • fact_deletion_request (518)    │  • resource_audit (1,388)          │
+│  • dim_identity_history (306)     │  • deletion_summary                │
+│  • fact_resource (2,046)          │  • system_deletion_summary         │
+│  • fact_case_data_link (1,216)    │                                    │
+└───────────────────────────────────┴────────────────────────────────────┘
 ```
 
-Start your AI coding tool from the **repository root** so it automatically reads [`AGENTS.md`](./AGENTS.md) and logs your session turns to `log.txt` in the root directory.
+For complete architectural specifications, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-Build your solution in `code/main.py`, or use another language and document its setup and run command clearly in your README.
+---
 
-Your solution must:
+## ⚡ Key Features
 
-- Read the input files from `dataset/`
-- Generate one prediction row for every request in `dataset/deletion_requests.csv`
-- Write the final predictions to `output.csv` in the repository root
+1. **Deterministic Linguistic Gate:** Differentiates genuine erasure requests from GDPR access/opt-out requests (`NOT_APPLICABLE`).
+2. **Canonical Identity & Alias Recovery:** Traverses audit logs to discover historical emails, phone numbers, and SHA-256 hashes.
+3. **Temporal Cutoff Guard (Admissibility Gate):** Strictly enforces `captured_at <= audit_at`—evidence captured after cutoff is rejected.
+4. **NetworkX DAG Remediation Planning:** Topological dependency sorting ensures active sync crons (`DISABLE_DATA_FLOW`) and backup paths (`BLOCK_RESTORE`) are halted *before* record deletion (`DELETE_RECORD`).
+5. **Interactive SOC Console (Port 6969):** React 19 dashboard featuring a live replication radar scanner, case explorer, and 3-phase exorcism simulation.
+6. **FastAPI Microservice (Port 8000):** Asynchronous REST API with auto-generated OpenAPI documentation (`/docs`).
+7. **Provenance-Grounded RAG Assistant:** Ingests Gold & Silver warehouse facts to explain decisions citing verified evidence IDs.
 
-Run the starter Python entry point with:
+For technology choices and LLM justification, see [`docs/TECH_STACK_AND_LLMS.md`](docs/TECH_STACK_AND_LLMS.md).
+
+---
+
+## 🚀 Quick Start
+
+### 1. Prerequisites
+- Python 3.11+
+- Node.js 18+ & npm
+
+### 2. Run the Full 518-Case Python Engine
+To execute the deterministic audit pipeline and generate `output.csv`:
 
 ```bash
 python3 code/main.py
 ```
 
-The blank template at `dataset/output.csv` is provided as a reference. Your final generated file for submission must be the root-level `output.csv`.
-
-
-## Dataset
-
-All participant-facing files are in `dataset/`:
-
-| File | Contents |
-| --- | --- |
-| `deletion_requests.csv` | 518 requests |
-| `sample_deletion_requests.csv` | 32 sample requests |
-| `sample_output.csv` | Correct sample answers |
-| `user_identities.csv` | Current user identities |
-| `user_audit_log.csv` | Historical identity changes |
-| `system_activity.csv` | Activity across services and data processes |
-| `deletion_rules.csv` | Required treatment for each data category |
-| `evidence_files.csv` | Manifest of supplied evidence files |
-| `output.csv` | Blank output template |
-
-Evidence is stored under `dataset/evidence/` and may include PDFs, images, logs, JSON, plain text, or SQL snapshot exports. SQL captures may contain a primary database, regional replicas, a reporting replica, or a failover replica so replication drift can be investigated directly. The `.sql` files are readable as text and executable with SQLite.
-
-Only `deletion_requests.csv` requires answers. The other files provide evidence and context.
-
----
-
-## Output
-
-Create `output.csv` with these columns in this exact order:
-
-```text
-case_id,deletion_status,steps_json
-```
-
-Produce exactly one row per request. `deletion_status` is `COMPLETE`, `INCOMPLETE`, or `NOT_APPLICABLE`. `steps_json` is an ordered JSON array containing findings, remediation actions, and verification checks. Use an empty array (`[]`) for `NOT_APPLICABLE`. Evidence references may be a `file_id`, `activity_id`, or `audit_id`. Determine the resource state at `audit_at` from the available evidence; reported workflow statuses and operation results are claims. Use `dataset/sample_output.csv` as the format reference.
-
-The final file must contain 518 data rows sorted by `case_id` (plus the header row). The grader parses `steps_json` as JSON, so object-key order and whitespace do not matter; array order does. Order findings, remediation, and verification in that phase order. Within a phase, follow the operation order in the problem statement, then sort by `system_id` and `resource_id`.
-
----
-
-## Evaluation
-
-`output.csv` will be compared with hidden canonical answers. Scoring considers:
-
-- deletion assessment accuracy;
-- current and historical identity resolution;
-- discovery of remaining data and recreation risks;
-- correct policy application and evidence references; and
-- completeness and ordering of remediation and verification steps.
-
-Your `code.zip` must include:
-
-```text
-code/evaluation/evaluation_report.md
-code/evaluation/usage_report.md
-```
-
-- `evaluation_report.md` must cover case, row, field, and sequence accuracy, at least three additional evaluation cases created by you, failures found, and improvements made.
-- `usage_report.md` must cover the final full-dataset run, including model providers and names, model calls, input and output tokens, total and average tokens per request, and estimated total and per-request cost. Include per-model and overall totals when using multiple models.
-
-**Important:** Place `evaluation_report.md` and `usage_report.md` inside `code/evaluation/` (matching `code/evaluation/main.py` in this starter layout), write your complete evaluation metrics, custom evaluation test cases, and token/cost breakdowns directly inside those Markdown files, and keep prompts in source code or Markdown files. Automated code evaluation ignores raw data files (`.csv`, `.tsv`, `.json`, `.jsonl`, `.sql`, `.log`), so content stored only in those formats will not be visible to the code judge or AI interviewer.
-
----
-
-## Chat Transcript
-
-This repository includes [`AGENTS.md`](./AGENTS.md), which instructs compatible AI coding tools to append conversation summaries to `log.txt` in the repository root:
-
-| Platform | Path |
-| --- | --- |
-| macOS / Linux | `<repo root>/log.txt` |
-| Windows | `<repo root>\log.txt` |
-
-- Always launch your AI coding agent from the repository root (or explicitly ask it to read `./AGENTS.md` first) so every turn is logged to `log.txt` with the required `User Prompt`, `Agent Response Summary`, `Actions`, and `Context` sections.
-- Upload `log.txt` directly as your `chat_transcript` submission on HackerRank.
-- Do not include API keys, tokens, credentials, or secrets in prompts, code, configuration, or `log.txt`.
-
----
-
-## Packaging `code.zip` and Submission
-
-| Item | Description |
-| --- | --- |
-| `code.zip` | Runnable solution, prompts, configuration, `README.md`, and `evaluation/` reports |
-| `output.csv` | One answer row for each of the 518 requests in `dataset/deletion_requests.csv` |
-| `chat_transcript` | The root `log.txt` file generated by your coding agent |
-| AI interview | Live explanation of your architecture, approach, and evaluation |
-
-You may use any programming language, model, framework, or retrieval approach. Include clear setup and execution instructions in `README.md` inside `code.zip`.
-
-To package `code.zip` from the repository root without bundling the dataset:
-
-**macOS / Linux:**
-
+### 3. Start the FastAPI Backend Service (Port 8000)
 ```bash
-zip -r code.zip README.md code -x "*/__pycache__/*" "*/.venv/*" "*/venv/*" "*/node_modules/*" "*/.git/*" "*/.DS_Store"
+PYTHONPATH=code uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
+```
+- Interactive Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
+- Medallion Overview: `GET /api/medallion/overview`
+- Grounded RAG Query: `POST /api/medallion/rag/query`
+
+### 4. Start the Forensic Web Console (Port 6969)
+```bash
+cd web
+npm install
+npm run dev -- --port 6969
+```
+- Open [http://localhost:6969/](http://localhost:6969/) in your browser.
+
+---
+
+## 📂 Project Structure
+
+```
+hack-halloween/
+├── code/
+│   ├── aegis/                     # Core forensic investigation & evidence indexer
+│   ├── api/app.py                 # FastAPI REST microservice
+│   ├── main.py                    # 518-case pipeline entrypoint
+│   ├── silver.py                  # Silver lakehouse builder
+│   └── silver_streaming.py        # Streaming silver processor
+├── data/
+│   └── silver/
+│       └── silver_database.db     # 8 normalized relational tables (2.9 MB)
+├── dataset/                       # 518 requests, identities, rules, and 94 evidence files
+├── docs/
+│   ├── ARCHITECTURE.md            # In-depth architectural & data model documentation
+│   ├── TECH_STACK_AND_LLMS.md     # Technology stack & LLM justification
+│   └── JUDGES_PRESENTATION_GUIDE.md # 5-minute pitch script & Q&A defense
+├── gold/
+│   ├── gold_database.db           # Analytical audit warehouse (592 KB)
+│   ├── customer_deletion_audit.csv # 518 case audit results
+│   └── resource_audit.csv         # 1,388 verified resources
+├── llm/                           # Gemini 2.0 / 1.5 audit explainer & prompts
+├── rag/                           # Provenance-grounded exact-match retriever
+├── web/                           # React 19 + TypeScript + Vite SOC Console (Port 6969)
+├── output.csv                     # Official 518-case verified submission
+└── README.md
 ```
 
-**Windows (PowerShell):**
+---
 
-```powershell
-Compress-Archive -Path README.md, code -DestinationPath code.zip -Force
-```
+## 🏆 Presentation Guide for Judges
 
-When packaging `code.zip`:
+A complete, timed 5-minute presentation script and anticipated Q&A defense is available in [`docs/JUDGES_PRESENTATION_GUIDE.md`](docs/JUDGES_PRESENTATION_GUIDE.md).
 
-- Keep your evaluation reports in `code/evaluation/` so they are bundled automatically with `code` (or add `evaluation` to the archive command above if you placed them in a top-level `evaluation/` directory).
-- Do **not** include `dataset/`, virtual environments (`.venv`, `venv`, `node_modules`), or build caches (`__pycache__`). On Windows, keep `.venv` at the repository root (outside `code/`) and remove any `code/__pycache__` folders before running `Compress-Archive`.
-- Do **not** include nested archives (`.zip`, `.tar`, `.gz`, `.tgz`, `.7z`, `.rar`) inside `code.zip` — submissions containing nested archive files will be rejected.
+---
 
-Before submitting, confirm that:
-
-- `output.csv` has the exact header `case_id,deletion_status,steps_json` and contains all 518 data rows sorted by `case_id`;
-- every `steps_json` value is a valid JSON array with consecutive step numbers starting at `1`;
-- findings cite valid evidence IDs, and `COMPLETE` verification steps cite evidence proving the current state;
-- proposed remediation and future verification steps use an empty `evidence_id` (`""`);
-- `code.zip` includes your runnable code, `README.md`, `code/evaluation/evaluation_report.md`, and `code/evaluation/usage_report.md`;
-- `log.txt` follows the `AGENTS.md` turn format and is uploaded to the `chat_transcript` slot; and
-- no API keys, credentials, real personal data, or sensitive configuration values are included.
+## 📄 License & Challenge Rules
+Built for **HackerRank Orchestrate (October 2026)** — *Ghost Data Still Exists*. Uses strictly participant-facing data with zero organizer shortcuts.

@@ -11,14 +11,14 @@ interface InvestigationModalProps {
   initialCaseId?: string;
 }
 
-export const InvestigationModal: React.FC<InvestigationModalProps> = ({ isOpen, onClose, initialCaseId = 'case_0412' }) => {
+export const InvestigationModal: React.FC<InvestigationModalProps> = ({ isOpen, onClose, initialCaseId = 'case_09' }) => {
   const [selectedCaseId, setSelectedCaseId] = useState<string>(initialCaseId);
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationProgress, setSimulationProgress] = useState(0);
   const [auditLogs, setAuditLogs] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'lineage' | 'steps' | 'logs'>('overview');
 
-  const currentCase: CaseData = SAMPLE_CASES[selectedCaseId] || SAMPLE_CASES['case_0412'];
+  const currentCase: CaseData = SAMPLE_CASES[selectedCaseId] || Object.values(SAMPLE_CASES)[0];
 
   useEffect(() => {
     if (initialCaseId && SAMPLE_CASES[initialCaseId]) {
@@ -97,11 +97,13 @@ export const InvestigationModal: React.FC<InvestigationModalProps> = ({ isOpen, 
                 setSimulationProgress(0);
                 setAuditLogs([]);
               }}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E2D5C7] bg-[#FDFBF9] text-[#2C333E] focus:outline-none focus:ring-2 focus:ring-orange-300"
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E2D5C7] bg-[#FDFBF9] text-[#2C333E] focus:outline-none focus:ring-2 focus:ring-orange-300 max-w-[280px] sm:max-w-md truncate"
             >
-              <option value="case_0412">Case #0412 (Elena Rostova - Full Ghost Recovery)</option>
-              <option value="case_09">Case #09 (Marcus Vance - Backup Restore Risk)</option>
-              <option value="case_05">Case #05 (Sophia Chang - Primary DB Zombie)</option>
+              {Object.values(SAMPLE_CASES).map((c) => (
+                <option key={c.case_id} value={c.case_id}>
+                  {c.title} ({c.status})
+                </option>
+              ))}
             </select>
 
             <button
@@ -238,12 +240,33 @@ export const InvestigationModal: React.FC<InvestigationModalProps> = ({ isOpen, 
 
               {/* Status & Compliance Summary */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white p-4 rounded-2xl border border-[#EBE0D3] flex items-center justify-between">
+                <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+                  currentCase.status === 'INCOMPLETE'
+                    ? 'bg-amber-50/70 border-amber-200'
+                    : currentCase.status === 'COMPLETE'
+                    ? 'bg-emerald-50/70 border-emerald-200'
+                    : 'bg-white border-[#EBE0D3]'
+                }`}>
                   <div>
                     <span className="text-[10px] font-bold uppercase text-[#717A88]">Audit Determination</span>
-                    <div className="text-base font-black text-emerald-700 mt-0.5">{currentCase.status}</div>
+                    <div className={`text-base font-black mt-0.5 ${
+                      currentCase.status === 'INCOMPLETE'
+                        ? 'text-amber-800'
+                        : currentCase.status === 'COMPLETE'
+                        ? 'text-emerald-700'
+                        : 'text-stone-700'
+                    }`}>
+                      {currentCase.status}
+                    </div>
+                    <span className="text-[10px] text-stone-500 block font-medium mt-0.5">
+                      {currentCase.status === 'INCOMPLETE' ? 'Residual ghost data detected' : 'Fully verified & purged'}
+                    </span>
                   </div>
-                  <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                  {currentCase.status === 'INCOMPLETE' ? (
+                    <AlertTriangle className="w-8 h-8 text-amber-500 shrink-0" />
+                  ) : (
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500 shrink-0" />
+                  )}
                 </div>
 
                 <div className="bg-white p-4 rounded-2xl border border-[#EBE0D3] flex items-center justify-between">
