@@ -1,5 +1,7 @@
+# Neural-Nomads-GHOST-DATA-STILL-EXISTS-
+
 # 👻 AEGIS 3.1: Ghost Data Still Exists
-> **AEGIS 3.1 — Forensic Analytics Accuracy & Evidence-Grounded Intelligence**  
+> **Team: Neural Nomads — Forensic Analytics Accuracy & Evidence-Grounded Intelligence**  
 > *HackerRank Orchestrate (October 2026)*
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
@@ -100,6 +102,35 @@ npm install
 npm run dev -- --port 6969
 ```
 - Open [http://localhost:6969/](http://localhost:6969/) in your browser.
+
+---
+
+## 🔐 Security & Environment Variables (`.env`)
+
+In strict accordance with the challenge rules and industry security standards:
+- **No secrets or API keys are ever committed to this repository.**
+- All sensitive credentials (such as Google Gemini API keys) are loaded dynamically from environment variables or an uncommitted local `.env` file.
+- The `.gitignore` file enforces that `.env` and `.env.*` are never tracked by Git.
+
+### Setting Up Your Local Environment:
+
+1. Copy the provided `.env.example` template:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Open `.env` and configure your credentials locally:
+   ```bash
+   # Google Gemini API (Optional — required only for live LLM explanation generation)
+   GEMINI_API_KEY=your_gemini_api_key_here
+   GEMINI_MODEL=gemini-flash-latest
+
+   # Service Endpoints
+   FASTAPI_PORT=8000
+   VITE_PORT=6969
+   ```
+
+> **Note:** The entire deterministic lakehouse audit engine and Kahn DAG remediation planner (`code/main.py`) execute **100% offline with zero external network or API key dependencies**. Providing a `GEMINI_API_KEY` is only needed when testing the natural language RAG explainer.
 
 ---
 
